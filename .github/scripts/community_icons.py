@@ -1,8 +1,14 @@
 """Community-Icons: Vorschläge aus GitHub-Issues prüfen, Vorschau rendern, angenommene Icons eintragen.
 
   python community_icons.py preview   – prüft das Icon, lädt ein Vorschaubild hoch und kommentiert
-  python community_icons.py accept    – trägt das Icon in community/icons.json ein
+  python community_icons.py sync      – gleicht community/icons.json mit den Labels ab (icon-accepted / icon-rejected)
+  python community_icons.py notify    – kommentiert und schließt die Issues, die beim Abgleich geändert wurden
   python community_icons.py test FILE – lokal testen: liest den Issue-Text aus FILE, schreibt preview.png
+
+Abgleich statt Einzelauftrag: Jeder Lauf baut den Katalog aus ALLEN Issues mit Label „icon-accepted“
+(ohne „icon-rejected“). Fällt ein Lauf aus oder wird er von GitHub abgebrochen, holt der nächste alles nach.
+Icons, die schon im Katalog stehen, werden nie neu aus dem Issue gelesen – spätere Änderungen am Issue-Text
+können ein angenommenes Icon also nicht mehr verändern.
 
 Eingaben kommen aus Umgebungsvariablen (ISSUE_BODY, ISSUE_NUMBER, …). Der Issue-Text ist fremder Inhalt
 und wird nur als Daten gelesen – nichts daraus wird ausgeführt. Nur Python-Standardbibliothek.
@@ -14,6 +20,7 @@ import os
 import re
 import struct
 import sys
+import time
 import urllib.error
 import urllib.request
 import zlib
@@ -93,20 +100,44 @@ def render_png(icon, cell=16, pad=16):
 
 
 # ---------------------------------------------------------------- GitHub-API (nur Standardbibliothek)
-def gh(method, path, data=None):
-    req = urllib.request.Request(f"https://api.github.com/repos/{os.environ['REPO']}{path}", method=method,
-                                 data=json.dumps(data).encode() if data is not None else None,
-                                 headers={"Authorization": f"Bearer {os.environ['GH_TOKEN']}",
-                                          "Accept": "application/vnd.github+json", "User-Agent": "pixelpanel-community"})
-    try:
-        with urllib.request.urlopen(req, timeout=20) as r:
-            return r.status, json.loads(r.read() or b"{}")
-    except urllib.error.HTTPError as e:
-        return e.code, json.loads(e.read() or b"{}")
+def gh(method, path, data=None, tries=3):
+    for attempt in range(tries):
+        req = urllib.request.Request(f"{os.environ.get('GITHUB_API_URL', 'https://api.github.com')}/repos/{os.environ['REPO']}{path}", method=method,
+                                     data=json.dumps(data).encode() if data is not None else None,
+                                     headers={"Authorization": f"Bearer {os.environ['GH_TOKEN']}",
+                                              "Accept": "application/vnd.github+json", "User-Agent": "pixelpanel-community"})
+        try:
+            with urllib.request.urlopen(req, timeout=20) as r:
+                return r.status, json.loads(r.read() or b"{}")
+        except urllib.error.HTTPError as e:
+            if e.code >= 500 and attempt < tries - 1:
+                time.sleep(2 + attempt * 3)
+                continue
+            return e.code, json.loads(e.read() or b"{}")
+        except (urllib.error.URLError, TimeoutError):
+            if attempt < tries - 1:
+                time.sleep(2 + attempt * 3)
+                continue
+            raise
 
 
-def comment(text):
-    gh("POST", f"/issues/{os.environ['ISSUE_NUMBER']}/comments", {"body": text})
+def gh_all(path):
+    """Alle Seiten einer Liste holen (z. B. Issues)."""
+    out, page = [], 1
+    while page <= 30:
+        sep = "&" if "?" in path else "?"
+        st, data = gh("GET", f"{path}{sep}per_page=100&page={page}")
+        if st != 200 or not isinstance(data, list):
+            raise SystemExit(f"GitHub-Fehler {st} bei {path}: {data}")
+        out += data
+        if len(data) < 100:
+            break
+        page += 1
+    return out
+
+
+def comment(text, num=None):
+    gh("POST", f"/issues/{num or os.environ['ISSUE_NUMBER']}/comments", {"body": text})
 
 
 def upload_preview(png):
@@ -122,7 +153,14 @@ def upload_preview(png):
             "content": base64.b64encode(png).decode()}
     if st == 200 and "sha" in cur:
         data["sha"] = cur["sha"]
-    st, res = gh("PUT", f"/contents/{path}", data)
+    for attempt in range(4):
+        st, res = gh("PUT", f"/contents/{path}", data)
+        if st not in (409, 422):
+            break
+        time.sleep(2 + attempt * 2)  # gleichzeitige Vorschau eines anderen Issues – kurz warten
+        st2, cur = gh("GET", f"/contents/{path}?ref={PREVIEW_BRANCH}")
+        if st2 == 200 and "sha" in cur:
+            data["sha"] = cur["sha"]
     sha = (res.get("content") or {}).get("sha", "")
     return f"https://raw.githubusercontent.com/{os.environ['REPO']}/{PREVIEW_BRANCH}/{path}?v={sha[:8]}"
 
@@ -145,18 +183,103 @@ def slug(s):
     return re.sub(r"[^a-z0-9]+", "_", t).strip("_")[:20] or "icon"
 
 
-def cmd_accept():
-    icon, err = parse(os.environ.get("ISSUE_BODY"))
-    if err:
-        comment(f"⚠️ Could not be added / Konnte nicht übernommen werden: {err}")
-        sys.exit(1)
-    cat = json.loads(CATALOG.read_text(encoding="utf-8")) if CATALOG.exists() else {"version": 1, "license": "CC0-1.0", "icons": []}
-    num = os.environ["ISSUE_NUMBER"]
-    cat["icons"] = [i for i in cat.get("icons", []) if i.get("issue") != int(num)]
-    cat["icons"].append({"id": f"{slug(icon['name'])}_{num}", **icon, "author": os.environ.get("ISSUE_AUTHOR", "")[:40],
-                         "added": datetime.date.today().isoformat(), "issue": int(num)})
-    CATALOG.parent.mkdir(exist_ok=True)
-    CATALOG.write_text(json.dumps(cat, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+ACTIONS = ROOT / "sync-actions.json"
+MSG_ADDED = ("🎉 Accepted – thank you! The icon is now in the community catalog and available to everyone in the Studio "
+             "under *Choose icon → Community icons*. · Angenommen – danke! Das Icon ist jetzt im Studio unter "
+             "*Icon auswählen → Community-Icons* für alle verfügbar.")
+MSG_REMOVED = ("The icon has been removed from the community catalog. Anyone already using it keeps it. · "
+               "Das Icon wurde aus dem Community-Katalog genommen. Wer es schon verwendet, behält es.")
+MSG_REJECTED = ("Thanks for your suggestion! This icon won't be added to the community catalog. · "
+                "Danke für deinen Vorschlag! Dieses Icon wird nicht in den Community-Katalog aufgenommen.")
+
+
+def load_catalog():
+    if CATALOG.exists():
+        cat = json.loads(CATALOG.read_text(encoding="utf-8"))
+        if isinstance(cat, dict) and isinstance(cat.get("icons"), list):
+            return cat
+    return {"version": 1, "license": "CC0-1.0", "icons": []}
+
+
+def cmd_sync():
+    """Katalog = alle Issues mit „icon-accepted“ und ohne „icon-rejected“. Schreibt sync-actions.json für notify."""
+    accepted = {i["number"]: i for i in gh_all("/issues?state=all&labels=icon-accepted") if "pull_request" not in i}
+    rejected = {i["number"]: i for i in gh_all("/issues?state=all&labels=icon-rejected") if "pull_request" not in i}
+    cat = load_catalog()
+    old = cat["icons"]
+    in_cat = {ic.get("issue"): ic for ic in old if isinstance(ic.get("issue"), int)}
+    keep = [ic for ic in old if not isinstance(ic.get("issue"), int)]   # Icons ohne Issue (von Hand eingetragen) bleiben
+    actions = {"added": [], "removed": [], "rejected": [], "failed": []}
+    want = sorted(n for n in accepted if n not in rejected)
+    new = []
+    for n in want:
+        if n in in_cat:
+            new.append(in_cat[n])                                    # schon drin: nie neu lesen
+            if accepted[n].get("state") == "open":
+                actions["added"].append(n)                           # Danke/Schließen ist beim letzten Mal ausgefallen
+            continue
+        issue = accepted[n]
+        icon, err = parse(issue.get("body"))
+        if err:
+            actions["failed"].append({"issue": n, "error": err, "open": issue.get("state") == "open"})
+            continue
+        new.append({"id": f"{slug(icon['name'])}_{n}", **icon, "author": (issue.get("user") or {}).get("login", "")[:40],
+                    "added": datetime.date.today().isoformat(), "issue": n})
+        actions["added"].append(n)
+    for n in in_cat:
+        if n not in want:
+            actions["removed"].append({"issue": n, "open": (accepted.get(n) or rejected.get(n) or {}).get("state") == "open",
+                                       "rejected": n in rejected, "known": n in accepted or n in rejected})
+    for n, issue in rejected.items():
+        if n not in in_cat and issue.get("state") == "open":
+            actions["rejected"].append(n)
+    # Reihenfolge im Katalog stabil halten: bisherige Reihenfolge, neue Icons hinten
+    order = {ic.get("issue"): k for k, ic in enumerate(old)}
+    new.sort(key=lambda ic: (order.get(ic.get("issue"), 10**9), ic.get("issue")))
+    cat["icons"] = keep + new
+    changed = cat["icons"] != old
+    if changed:
+        CATALOG.parent.mkdir(exist_ok=True)
+        CATALOG.write_text(json.dumps(cat, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+    ACTIONS.write_text(json.dumps(actions), encoding="utf-8")
+    out = os.environ.get("GITHUB_OUTPUT")
+    if out:
+        with open(out, "a", encoding="utf-8") as f:
+            f.write(f"changed={'true' if changed else 'false'}\n")
+    print(json.dumps({"changed": changed, **actions}, ensure_ascii=False))
+
+
+def close(num, reason):
+    gh("PATCH", f"/issues/{num}", {"state": "closed", "state_reason": reason})
+
+
+def remove_label(num, name):
+    gh("DELETE", f"/issues/{num}/labels/{name}")
+
+
+def cmd_notify():
+    """Nach dem Speichern: Danke sagen / Bescheid geben und schließen. Läuft nur, wenn der Katalog schon gespeichert ist."""
+    if not ACTIONS.exists():
+        return
+    a = json.loads(ACTIONS.read_text(encoding="utf-8"))
+    for n in a.get("added", []):
+        comment(MSG_ADDED, n)
+        close(n, "completed")
+    for r in a.get("removed", []):
+        if not r.get("known"):
+            continue                                                  # Label von Hand entfernt, Issue unbekannt – nichts sagen
+        comment(MSG_REMOVED, r["issue"])
+        if r.get("rejected"):
+            remove_label(r["issue"], "icon-accepted")
+        if r.get("open"):
+            close(r["issue"], "not_planned")
+    for n in a.get("rejected", []):
+        remove_label(n, "icon-accepted")
+        comment(MSG_REJECTED, n)
+        close(n, "not_planned")
+    for f in a.get("failed", []):
+        remove_label(f["issue"], "icon-accepted")                    # sonst würde jeder Lauf es erneut versuchen
+        comment(f"⚠️ Could not be added / Konnte nicht übernommen werden: {f['error']}", f["issue"])
 
 
 def cmd_test(path):
@@ -170,8 +293,10 @@ if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv) > 1 else ""
     if cmd == "preview":
         cmd_preview()
-    elif cmd == "accept":
-        cmd_accept()
+    elif cmd in ("sync", "accept"):
+        cmd_sync()
+    elif cmd == "notify":
+        cmd_notify()
     elif cmd == "test" and len(sys.argv) > 2:
         cmd_test(sys.argv[2])
     else:
