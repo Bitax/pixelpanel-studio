@@ -1,0 +1,21 @@
+name: 💡 Idea / Idee
+description: Suggest an improvement or a new feature · Verbesserungsvorschlag oder neue Funktion
+title: "Idea: "
+labels: ["idea"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for your idea! English or German – both are fine. · Danke für deine Idee! Englisch oder Deutsch – beides ist okay.
+  - type: textarea
+    id: description
+    attributes:
+      label: Your idea / Deine Idee
+      description: What would you like – ideally with an example (which page, which device …) · Was wünschst du dir – gern mit Beispiel
+    validations:
+      required: true
+  - type: textarea
+    id: tech
+    attributes:
+      label: Technical info (filled in by the Studio, optional) / Technische Infos (vom Studio ausgefüllt, optional)
+      render: text

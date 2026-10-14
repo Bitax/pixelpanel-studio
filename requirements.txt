@@ -1,0 +1,4 @@
+fastapi>=0.110
+uvicorn>=0.29
+aiohttp>=3.9
+esphome>=2026.1

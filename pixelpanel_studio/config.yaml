@@ -1,0 +1,17 @@
+name: PixelPanel Studio
+version: "3.1"
+slug: pixelpanel_studio
+description: Design pages for an ESP32 HUB75 LED panel and push them via ESPHome.
+url: https://github.com/Bitax/pixelpanel-studio
+arch:
+  - aarch64
+  - amd64
+init: false
+startup: application
+boot: auto
+ingress: true
+ingress_port: 8765
+panel_icon: mdi:led-strip-variant
+panel_title: PixelPanel
+homeassistant_api: true
+watchdog: tcp://[HOST]:[PORT:8765]

@@ -1,0 +1,84 @@
+# Community-Icons: prüft Vorschläge (Vorschaubild als Kommentar) und trägt angenommene Icons ein.
+# Ablauf: Nutzer schlägt im Studio ein Icon vor → Issue mit Label „icon-suggestion“ → Bot kommentiert mit Vorschau.
+# Du setzt das Label „icon-accepted“ → Bot trägt es in community/icons.json ein und schließt das Issue.
+# Sicherheit: Der Issue-Text wird nur als Daten gelesen (über eine Umgebungsvariable), nie ausgeführt.
+name: Community-Icons
+
+on:
+  issues:
+    types: [opened, edited, labeled]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: community-icons
+  cancel-in-progress: false
+
+jobs:
+  labels:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Labels anlegen
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh label create icon-suggestion --color 5E5CE6 --description "Icon suggestion from the Studio / Icon-Vorschlag" --force
+          gh label create icon-accepted   --color 34C759 --description "Icon goes into the community catalog / wird übernommen" --force
+          gh label create icon-rejected   --color 8E8E93 --description "Icon will not be added / wird nicht übernommen" --force
+          gh label create idea            --color FF9F0A --description "Feature request / Verbesserungsvorschlag" --force
+          gh label create bug             --color FF453A --description "Something isn't working / Fehler" --force
+
+  preview:
+    if: github.event_name == 'issues' && github.event.action != 'labeled' && contains(github.event.issue.labels.*.name, 'icon-suggestion')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Icon prüfen und Vorschau kommentieren
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+        run: python .github/scripts/community_icons.py preview
+
+  accept:
+    if: github.event_name == 'issues' && github.event.action == 'labeled' && github.event.label.name == 'icon-accepted'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Icon in den Katalog eintragen
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          ISSUE_AUTHOR: ${{ github.event.issue.user.login }}
+        run: python .github/scripts/community_icons.py accept
+      - name: Speichern
+        env:
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add community/icons.json
+          git diff --cached --quiet || git commit -m "Community-Icon aus #${ISSUE_NUMBER} übernommen"
+          git push
+      - name: Danke sagen und schließen
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          gh issue comment "$ISSUE_NUMBER" --body "🎉 Accepted – thank you! The icon is now in the community catalog and available to everyone in the Studio under *Choose icon → Community icons*. · Angenommen – danke! Das Icon ist jetzt im Studio unter *Icon auswählen → Community-Icons* für alle verfügbar."
+          gh issue close "$ISSUE_NUMBER" --reason completed

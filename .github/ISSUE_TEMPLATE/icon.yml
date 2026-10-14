@@ -1,0 +1,33 @@
+name: 🎨 Icon suggestion / Icon vorschlagen
+description: Suggest your own icon for everyone (filled in automatically by the Studio) · Eigenes Icon für alle vorschlagen
+title: "Icon: "
+labels: ["icon-suggestion"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks! A bot checks the icon right away and posts a preview. Accepted icons become available to everyone in the Studio.
+        Danke! Ein Bot prüft das Icon gleich und zeigt eine Vorschau. Angenommene Icons gibt es danach für alle im Studio.
+  - type: input
+    id: name
+    attributes:
+      label: Icon name / Name des Icons
+    validations:
+      required: true
+  - type: textarea
+    id: icon_json
+    attributes:
+      label: Icon data / Icon-Daten
+      description: Please don't change – comes straight from the icon editor. · Bitte nicht verändern – kommt direkt aus dem Icon-Editor.
+      render: json
+    validations:
+      required: true
+  - type: checkboxes
+    id: rights
+    attributes:
+      label: Confirmation / Bestätigung
+      options:
+        - label: I made this icon myself (or may share it) and it contains no logos or trademarks. · Ich habe das Icon selbst erstellt (oder darf es weitergeben), es enthält keine Logos oder Marken.
+          required: true
+        - label: The icon may be published under CC0 1.0 (public domain) and used freely by everyone. · Das Icon darf unter CC0 1.0 (gemeinfrei) veröffentlicht und von allen frei genutzt werden.
+          required: true

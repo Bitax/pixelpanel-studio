@@ -1,0 +1,6 @@
+# Persönliche Daten – NIE hochladen (enthält HA-Token, WLAN-Passwort, API-Schlüssel)
+data/
+# Python-Umgebung und Caches
+.venv/
+__pycache__/
+*.pyc

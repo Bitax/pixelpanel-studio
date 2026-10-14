@@ -1,0 +1,81 @@
+# 10. Fehlerhilfe & FAQ
+
+## Das Panel
+
+| Was du siehst | Was hilft |
+|---|---|
+| Panel bleibt dunkel | Strom am Panel? OE, LAT und CLK prüfen · Treiberchip auf **FM6126A** stellen und neu übertragen · Ruhezeit aktiv? · *Panel an* auf der Übersicht? · Hat eine Seite eine Bedingung, die gerade nicht erfüllt ist? |
+| Nur die obere oder untere Hälfte leuchtet | E-Leitung fehlt (bei 64 Pixel Höhe Pflicht) |
+| Farben vertauscht | R/G/B-Leitungen tauschen oder die Pins prüfen |
+| Zufällige Pixel / Flimmern | GND verbinden · Steckkabel kürzer · Kondensator · Netzteil stärker |
+| Bild doppelt / verschoben | A/B/C/D vertauscht oder Ketten-Layout unter *Panel & Hardware* ändern |
+| ESP startet bei hellen Bildern neu | Netzteil zu schwach – unter *Panel & Hardware → Stromversorgung* den echten Wert eintragen |
+| Bild vertauscht/gespiegelt bei mehreren Panels | anderes Ketten-Layout probieren · Drehung prüfen |
+| Uhrzeit falsch | Zeitzone unter *Einstellungen → Allgemein* (z. B. `Europe/Berlin`) |
+| Werte zeigen „–“ | Entität in Home Assistant nicht verfügbar? · Panel in HA eingebunden (*Einstellungen → Geräte & Dienste → ESPHome*)? |
+| Panel zeigt alte Version | Banner „Auf dem Panel läuft noch Version …“ → einmal **Übernehmen & aufs Panel** |
+
+## Übertragen
+
+**„ESPHome ist nicht installiert“** (PC-Version) – `Start.bat`/`start.sh` installiert es beim ersten Start.
+Sonst im Studio-Ordner ausführen: `.venv\Scripts\pip install esphome` (Windows) bzw. `.venv/bin/pip install esphome`.
+
+**Der erste Flash klappt nicht.** Ein neuer ESP32 braucht einmal ein USB-**Daten**kabel. Unter Windows im
+Geräte-Manager unter *Anschlüsse* nachsehen, welcher COM-Port erscheint; ggf. den USB-Treiber (CP210x oder CH340) installieren.
+Manche Boards brauchen beim Verbinden einen Druck auf die **BOOT**-Taste.
+
+**Übertragen per WLAN findet das Panel nicht.** Unter *Übertragung → Gerät* die IP-Adresse des Panels eintragen
+(steht im Router oder in Home Assistant beim Gerät).
+
+**ESPHome in HA: „Verbindung fehlgeschlagen“.** In der ESPHome-App unter *Konfiguration → Netzwerk* den Port
+**6052** eintragen und die App neu starten. Hast du dort ein Passwort gesetzt, unter *Dashboard-Passwort* eintragen.
+
+**Home-Assistant-App, allererste Installation.** In der ESPHome-App beim Gerät *Installieren* → *Plug into this computer*
+(braucht Chrome oder Edge) – oder *Manual download* und die Datei über [web.esphome.io](https://web.esphome.io) aufspielen.
+
+**Speicher zu knapp.** Die Board-Prüfung unter *Panel & Hardware* warnt rechtzeitig. Weniger Seiten/Entitäten,
+eine einfachere Animation oder ein ESP32-S3 helfen. Nach dem Übertragen zeigt *Übertragen* die echte Belegung (RAM/Flash).
+
+## Home Assistant
+
+**HA fragt nach einem Verschlüsselungsschlüssel.** Er steht unter *Zugänge & Sicherheit → Sicherheit → API-Schlüssel*.
+
+**Das Studio zeigt „Demo-Modus“.** Adresse und Token unter *Zugänge & Sicherheit → Home Assistant* eintragen und
+*Verbindung testen*. In der Home-Assistant-App passiert das automatisch.
+
+**Panel-Sprache gewechselt – in Home Assistant sind Entitäten „nicht verfügbar“.** Die Namen der Panel-Entitäten
+(„Anzeige“/„Display“ …) folgen der Sprache auf dem Panel. Nach einem Wechsel legt Home Assistant sie neu an; die alten
+kannst du unter *Einstellungen → Geräte & Dienste → ESPHome → Gerät* löschen. Automationen ggf. auf die neuen Entitäten umstellen.
+
+**Neue Geräte tauchen nicht auf.** Das Studio hält eine Live-Verbindung; falls sie abreißt, verbindet es sich selbst neu.
+Ein Neuladen der Seite hilft im Zweifel.
+
+## Allgemein
+
+**Läuft das Studio ohne Home Assistant?** Ja, im Demo-Modus mit Beispieldaten. Der volle Funktionsumfang
+(Werte, Timer, Kalender, Bedingungen, Live-Änderungen, Steuerung) braucht Home Assistant.
+
+**Gibt es die App auch für Home Assistant Container (Docker) oder Core?** Nein – dort gibt es keine Apps.
+Nimm die PC-Version und verbinde sie per Adresse und Token.
+
+**Muss der PC immer laufen?** Nein. Das Panel arbeitet selbstständig mit Home Assistant. Den PC brauchst du nur zum
+Gestalten und Übertragen.
+
+**Wo liegen meine Einstellungen?** PC-Version: im Ordner `data` (dort stehen auch Token, WLAN-Passwort und
+API-Schlüssel – **nie weitergeben oder hochladen**). App: im Speicher der App, in jedem HA-Backup enthalten.
+
+**Update der PC-Version.** Bei einer neuen Version erscheint auf der Übersicht ein Hinweis
+*„Version X ist da“* mit **Was ist neu?** und **Herunterladen**:
+1. Neue ZIP herunterladen und entpacken.
+2. Den Ordner `data` aus der alten Version hineinkopieren.
+3. `Start.bat` bzw. `start.sh` starten.
+4. Einmal **Übernehmen & aufs Panel**, damit auch das Panel die neue Version bekommt.
+
+**Update der App.** Erscheint in Home Assistant unter *Einstellungen → Apps* wie bei jeder anderen App.
+
+**Warum heißt es „Apps“ und nicht „Add-ons“?** Home Assistant hat Add-ons in „Apps“ umbenannt – gemeint ist dasselbe.
+
+**Lizenz?** GPL-3.0: nutzen, verändern und weitergeben erlaubt; veränderte Versionen müssen ebenfalls offen
+und unter GPL-3.0 bleiben.
+
+Nicht gefunden, was du suchst? → *Einstellungen → Feedback* oder ein [Issue auf GitHub](https://github.com/Bitax/pixelpanel-studio/issues).
