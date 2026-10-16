@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.2.1
+
+- Works with the new **ESPHome Device Builder** (ESPHome 2026.6+)
+- New upload method **ESPHome folder** (default): PixelPanel puts the configuration into the Device Builder, you click **Install** – no open port. Needs access to the Home Assistant configuration folder.
+- Upload method **Automatic** for the new Device Builder, with **Test connection**
+
 ## 3.2 – animated icons
 
 ### New

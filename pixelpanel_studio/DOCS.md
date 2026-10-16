@@ -6,7 +6,7 @@
 
 - Home Assistant **OS** or **Supervised** (apps are not available on Container/Docker or Core –
   use the PC version from the [GitHub releases](https://github.com/Bitax/pixelpanel-studio/releases) there)
-- The **ESPHome app** (ESPHome Device Builder) installed and started
+- The **ESPHome Device Builder** app installed and started
 - An ESP32 (or ESP32-S3) with a HUB75 LED panel – see the handbook for wiring
 
 ## First start
@@ -20,15 +20,20 @@
 
 ## Transferring the firmware
 
-The app uses the upload method **“ESPHome in HA”** (Settings → Access & security → Upload): PixelPanel Studio creates the
-device configuration in the ESPHome app and starts the build there.
+Settings → Access & security → Upload offers two methods:
 
-- The ESPHome app must be reachable on port **6052**. In the ESPHome app open
-  **Configuration → Network**, enter `6052` and restart it.
-- The address preset in PixelPanel is `http://172.30.32.1:6052`.
-- The very **first** install on a brand-new ESP32 has to be done by USB cable
-  (ESPHome app → device → Install → “Plug into this computer”). After that every
-  update goes over Wi-Fi.
+**ESPHome folder (default, safest)** – *Apply & upload to panel* puts the configuration straight into the
+ESPHome Device Builder (`/config/esphome`). Open the device there and click **Install**. No port is opened.
+This is why the app asks for access to the Home Assistant configuration folder; it only writes the panel's YAML file.
+
+**Automatic** – one click in PixelPanel saves, compiles and uploads everything. The new ESPHome Device Builder
+(ESPHome 2026.6+) only allows this when you turn on **“Disable external authentication”** and enter port **6052**
+under Network in its configuration (then restart it). The Device Builder is then reachable on your network
+**without a password** – only use this if you trust every device on your network. Use **Test connection** in PixelPanel to check.
+
+The very **first** install on a brand-new ESP32 is done by USB cable: plug it into the Home Assistant machine and
+choose **Install → “Plug into the computer running ESPHome Device Builder”** in the Device Builder. After that every
+update goes over Wi-Fi.
 
 Building directly inside this app (“local”) is not supported – the ESPHome compiler
 would make the app very large.
@@ -60,10 +65,12 @@ Seitenleiste öffnen. Die Verbindung zu Home Assistant entsteht automatisch – 
 kein Token nötig. Danach unter **Einstellungen → Panel & Hardware** Board und Panel wählen, unter
 **Zugänge & Sicherheit → WLAN** das WLAN eintragen, Seiten gestalten und **Übernehmen & aufs Panel** drücken.
 
-**Übertragung:** Die App baut die Firmware über die ESPHome-App (Methode „ESPHome in HA“ unter Zugänge & Sicherheit → Übertragung).
-In der ESPHome-App unter **Konfiguration → Netzwerk** den Port `6052` eintragen und neu starten.
-Die **allererste** Installation auf einem neuen ESP32 muss per USB-Kabel erfolgen
-(ESPHome-App → Gerät → Installieren). Danach geht jedes Update über WLAN.
+**Übertragung:** Standard ist **ESPHome-Ordner**: „Übernehmen & aufs Panel“ legt die Konfiguration direkt in den
+ESPHome Device Builder, dort beim Gerät auf **Installieren** klicken – kein offener Port. Wer alles mit einem Klick will,
+wählt **Automatisch** und schaltet im Device Builder „Disable external authentication“ ein und trägt bei Netzwerk `6052` ein
+(dann ist ESPHome im WLAN ohne Passwort erreichbar). Die **allererste** Installation auf einem neuen ESP32 erfolgt per USB:
+ESP32 an den Home-Assistant-Rechner stecken → im Device Builder **Installieren → „Plug into the computer running ESPHome
+Device Builder“**. Danach geht jedes Update über WLAN.
 
 **Daten:** Alle Einstellungen liegen im `/data`-Ordner der App und sind in jedem HA-Backup enthalten.
 

@@ -7,6 +7,6 @@ charts …) right inside Home Assistant and push them to the panel via ESPHome.
 
 - Opens in the Home Assistant sidebar – no extra login, no token needed
 - Settings are kept in the app's own storage (included in HA backups)
-- Firmware is built by the **ESPHome app** (Device Builder) in Home Assistant
+- Firmware is built by the **ESPHome Device Builder** app in Home Assistant
 
 See the **Documentation** tab for setup.

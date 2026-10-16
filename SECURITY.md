@@ -10,6 +10,7 @@
   Without a password set, other devices are always locked out.
 - Requests from other websites are rejected (host and origin checks), the Studio can't be embedded in foreign pages.
 - **Home Assistant app:** only accepts connections through Home Assistant ingress; authentication is done by Home Assistant.
+  It has write access to the Home Assistant configuration folder only to place the panel's ESPHome file in `esphome/` (upload method “ESPHome folder”).
 - The Studio sends nothing to the internet. It only *reads* from GitHub: the list of community icons
   (`community/icons.json`, hourly) and – PC version only – whether a new release exists (`api.github.com`, at most every
   6 hours). No personal data is sent. The feedback form opens GitHub in your browser; you submit it there.
@@ -34,7 +35,7 @@ Only the latest release receives security fixes.
 
 - **PC-Version:** standardmäßig nur auf diesem Computer erreichbar (`127.0.0.1`).
 - **Handy-Zugriff** nur mit Benutzername und Passwort (scrypt-Hash, sichere Cookies, Wartezeit nach 5 Fehlversuchen).
-- **Home-Assistant-App:** nur über Home Assistant (Ingress) erreichbar, die Anmeldung übernimmt Home Assistant.
+- **Home-Assistant-App:** nur über Home Assistant (Ingress) erreichbar, die Anmeldung übernimmt Home Assistant. Sie schreibt in den Konfigurationsordner nur die ESPHome-Datei des Panels nach `esphome/`.
 - Das Studio schickt nichts ins Internet. Es liest nur von GitHub: die Community-Icons (stündlich) und – nur PC-Version – ob es eine neue Version gibt (höchstens alle 6 Stunden). Keine persönlichen Daten.
 - Der Ordner `data` enthält Token, WLAN-Passwort und API-Schlüssel – **nie weitergeben oder hochladen**. Den Port **nie** im Router freigeben.
 

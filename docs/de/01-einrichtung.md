@@ -62,8 +62,8 @@ Die App meldet sich selbst bei Home Assistant an – du brauchst keine Adresse u
 Einstellungen liegen im Speicher der App und sind in jedem HA-Backup enthalten.
 Updates erscheinen wie bei jeder anderen App unter *Einstellungen → Apps*.
 
-**Voraussetzung für die Übertragung:** die **ESPHome-App** (ESPHome Device Builder).
-Dort unter *Konfiguration → Netzwerk* den Port **6052** eintragen und die ESPHome-App neu starten.
+**Voraussetzung für die Übertragung:** die App **ESPHome Device Builder** (installieren und starten).
+Mehr musst du dort für den Standardweg nicht einstellen – siehe „Übertragen“ unten.
 
 ## Erste Schritte
 
@@ -78,21 +78,39 @@ Dort unter *Konfiguration → Netzwerk* den Port **6052** eintragen und die ESPH
 
 ![Übertragen](../images/de/deploy.png)
 
-Unter *Zugänge & Sicherheit → Übertragung* gibt es zwei Wege:
+Unter *Zugänge & Sicherheit → Übertragung* wählst du, wie die Software aufs Panel kommt:
 
-| | Lokal (dieser PC) | ESPHome in HA |
-|---|---|---|
-| Kompiliert auf | deinem PC | dem Home-Assistant-Rechner |
-| Voraussetzung | WLAN-Daten in den Einstellungen | ESPHome-App, Port 6052 freigegeben |
-| Gerät im ESPHome-Dashboard sichtbar | nein | ja |
-| In der Home-Assistant-App | – | **immer dieser Weg** |
+| | Lokal (dieser PC) | ESPHome-Ordner | Automatisch / ESPHome in HA |
+|---|---|---|---|
+| Gibt es in | PC-Version | Home-Assistant-App | beiden |
+| Kompiliert auf | deinem PC | dem Home-Assistant-Rechner | dem Home-Assistant-Rechner |
+| Was du tust | „Übernehmen & aufs Panel“ | „Übernehmen & aufs Panel“, dann im **ESPHome Device Builder** beim Gerät auf **Installieren** | nur „Übernehmen & aufs Panel“ |
+| Voraussetzung | WLAN-Daten in den Einstellungen | nichts weiter | im Device Builder „Disable external authentication“ an und Port 6052 |
+| Sicherheit | – | kein offener Port | Device Builder ist im WLAN **ohne Passwort** erreichbar |
+
+**ESPHome-Ordner** ist in der Home-Assistant-App der Standard und der sicherste Weg: Das Studio legt die
+Konfiguration direkt in den ESPHome Device Builder, das Gerät taucht dort nach ein paar Sekunden auf.
+
+**Automatisch** einrichten (einmalig, nur wenn du es willst):
+
+1. *Einstellungen → Apps → ESPHome Device Builder → Konfiguration*
+2. „Nicht verwendete optionale Konfigurationsoptionen einblenden“ einschalten
+3. **„Disable external authentication“** einschalten → Speichern
+4. Bei **Netzwerk** `6052` eintragen → Speichern
+5. Reiter *Info* → **Neu starten**
+6. Im Studio: Methode **Automatisch**, Dashboard-Adresse leer lassen → **Verbindung testen**
+
+Danach ist der Device Builder in deinem WLAN ohne Passwort erreichbar. Nutze das nur, wenn du allen Geräten in deinem WLAN vertraust.
 
 **Allererste Übertragung:** Ein neuer ESP32 muss einmal per **USB-Kabel** bespielt werden.
 
 - *PC-Version, lokal:* ESP32 per USB anstecken, unter *Übertragung → Gerät* den Anschluss
   eintragen (Windows z. B. `COM3`, siehe Geräte-Manager → Anschlüsse; Mac z. B.
   `/dev/cu.usbserial-…`), **Jetzt übertragen**. Danach das Feld wieder leeren.
-- *ESPHome in HA:* in der ESPHome-App beim Gerät **Installieren → „Plug into this computer“**.
+- *Home-Assistant-App:* erst im Studio **„Übernehmen & aufs Panel“** (das Gerät erscheint im Device Builder),
+  dann den ESP32 per USB-Datenkabel an den Home-Assistant-Rechner stecken und im **ESPHome Device Builder**
+  beim Gerät **Installieren → „Plug into the computer running ESPHome Device Builder“** wählen.
+  Bei der Methode *Automatisch* meldet das Studio beim ersten Mal, dass das Panel noch nicht erreichbar ist – das ist normal.
 
 Ab dann geht jedes Update per WLAN. Das erste Kompilieren dauert einige Minuten, danach geht es deutlich schneller.
 

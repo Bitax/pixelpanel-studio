@@ -5,6 +5,7 @@ Start:  python server.py      ->  http://localhost:8765
 import asyncio
 import secrets
 import base64
+import contextlib
 import datetime
 import copy
 import hashlib
@@ -45,6 +46,29 @@ DATA.mkdir(parents=True, exist_ok=True)
 INGRESS_IP = "172.30.32.2"  # Home Assistant leitet die Seitenleiste von hier aus weiter
 
 
+def inline_secrets(mode):
+    """WLAN-Daten direkt in die YAML schreiben (alles außer lokal, dort gibt es eine eigene secrets.yaml)."""
+    return mode in ("dashboard", "folder")
+
+
+def dashboard_base(s):
+    """Adresse des ESPHome Device Builders – leer = Standard (App: derselbe HA-Rechner)."""
+    b = str(s.get("dashboard_url") or "").strip().rstrip("/")
+    if not b or b == "http://homeassistant.local:6052" and APP_MODE:
+        b = "http://172.30.32.1:6052" if APP_MODE else "http://homeassistant.local:6052"
+    if not re.match(r"^https?://", b, re.I):
+        b = "http://" + b
+    return b
+
+
+def esphome_dir():
+    """Konfigurationsordner des ESPHome Device Builders (nur in der Home-Assistant-App erreichbar)."""
+    for p in (os.environ.get("PIXELPANEL_ESPHOME_DIR"), "/homeassistant/esphome", "/config/esphome"):
+        if p and Path(p).parent.is_dir() and os.access(Path(p).parent, os.W_OK):
+            return Path(p)
+    return None
+
+
 def ha_creds(cfg):
     """Adresse + Token für Home Assistant – in der App automatisch über den Supervisor."""
     if APP_MODE and os.environ.get("SUPERVISOR_TOKEN"):
@@ -70,9 +94,9 @@ DEFAULT_CONFIG = {
         "hw_board": "devkit",
         "panel_lang": "de",
         "anim": {"style": "fade", "ms": 600, "ease": "smooth"},
-        "deploy_mode": "local",          # local | dashboard
+        "deploy_mode": "local",          # local | folder (ESPHome-Ordner) | dashboard (ESPHome Device Builder)
         "device_host": "",               # IP oder COM-Port (lokal)
-        "dashboard_url": "http://homeassistant.local:6052",
+        "dashboard_url": "",  # leer = Standardadresse (siehe dashboard_base)
         "dashboard_user": "",
         "dashboard_password": "",
         "wifi_ssid": "",
@@ -203,6 +227,13 @@ def migrate(cfg):
             st["deploy_mode"] = "dashboard"
         if st.get("dashboard_url") in (None, "", "http://homeassistant.local:6052"):
             st["dashboard_url"] = "http://172.30.32.1:6052"  # ESPHome-App, Port 6052 auf dem HA-Rechner
+    # 3.1.1: in der App ist „ESPHome-Ordner“ der sichere Standard (der neue Device Builder öffnet keinen Port mehr)
+    if APP_MODE and not cfg.get("_app_init2"):
+        cfg["_app_init2"] = True
+        if esphome_dir() is not None and st.get("deploy_mode") in (None, "", "local", "dashboard"):
+            st["deploy_mode"] = "folder"
+        if st.get("dashboard_url") == "http://172.30.32.1:6052":
+            st["dashboard_url"] = ""
     if not isinstance(cfg.get("icons"), dict):
         cfg["icons"] = {}
     pages = []
@@ -525,7 +556,7 @@ def structure_hash(cfg):
     """Fingerabdruck der Firmware ohne live änderbare Werte."""
     mode = cfg["settings"].get("deploy_mode")
     try:
-        text = yaml_gen.generate(yaml_gen.live_normalized(cfg), ha.units(), secrets_inline=(mode == "dashboard"))
+        text = yaml_gen.generate(yaml_gen.live_normalized(cfg), ha.units(), secrets_inline=inline_secrets(mode))
     except yaml_gen.GenError:
         return None
     return hashlib.sha256(text.encode()).hexdigest()
@@ -612,15 +643,17 @@ async def push_after_boot(cfg):
 # =================================================================== Übertragen
 class Deployer:
     STEPS = ["YAML speichern", "Kompilieren", "Übertragen", "Neustart"]
-    ANSI = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
+    ANSI = re.compile(r"(?:\x1b|\\033|\\x1b|\\u001b)\[[0-9;]*[A-Za-z]")
     # PlatformIO-Zusammenfassung: "RAM:   [=   ]  12.3% (used 40308 bytes from 327680 bytes)"
     USAGE = re.compile(r"^(RAM|Flash):\s*\[.*?\]\s*([\d.]+)%\s*\(used (\d+) bytes from (\d+) bytes\)")
 
     def __init__(self):
         self.reset()
 
-    def reset(self):
+    def reset(self, steps=None):
         self.running, self.ok, self.step, self.lines, self.finished_at = False, None, 0, [], None
+        self.steps = steps or self.STEPS
+        self._ws, self._jobs = None, set()
         self._proc = None
         self._cancel = False
         self.usage = {}
@@ -648,7 +681,7 @@ class Deployer:
                 usage = json.loads(DEPLOYED_PATH.read_text("utf-8")).get("usage") or {}
             except (OSError, ValueError):
                 usage = {}
-        return {"running": self.running, "ok": self.ok, "step": self.step, "steps": self.STEPS,
+        return {"running": self.running, "ok": self.ok, "step": self.step, "steps": self.steps,
                 "lines": self.lines[since:], "total": len(self.lines), "usage": usage}
 
     async def start(self, cfg):
@@ -656,12 +689,18 @@ class Deployer:
             raise HTTPException(409, "Es läuft bereits eine Übertragung.")
         s = cfg["settings"]
         mode = s.get("deploy_mode", "local")
-        yaml_text = yaml_gen.generate(cfg, ha.units(), secrets_inline=(mode == "dashboard"))
-        self.reset()
+        if APP_MODE and mode not in ("folder", "dashboard"):
+            mode = "folder" if esphome_dir() is not None else "dashboard"
+        if mode == "folder" and esphome_dir() is None:
+            mode = "dashboard"
+        yaml_text = yaml_gen.generate(cfg, ha.units(), secrets_inline=inline_secrets(mode))
+        self.reset(["YAML speichern", "Im Device Builder installieren"] if mode == "folder" else None)
         self.running = True
         self.cfg = copy.deepcopy(cfg)
         name = yaml_gen.device_slug(s)
-        if mode == "dashboard":
+        if mode == "folder":
+            asyncio.create_task(self._folder(s, name, yaml_text))
+        elif mode == "dashboard":
             asyncio.create_task(self._dashboard(s, name, yaml_text))
         else:
             asyncio.create_task(self._local(s, name, yaml_text))
@@ -670,7 +709,7 @@ class Deployer:
         self.log(msg)
         self.ok, self.running, self.finished_at = ok, False, time.time()
         if ok:
-            self.step = len(self.STEPS)
+            self.step = len(self.steps)
             DEPLOYED_PATH.write_text(json.dumps({"hash": structure_hash(self.cfg), "at": time.time(), "usage": self.usage}), "utf-8")
             asyncio.create_task(push_after_boot(self.cfg))
 
@@ -724,38 +763,188 @@ class Deployer:
         except Exception as e:  # noqa: BLE001
             self._finish(False, f"✖ {e}")
 
+    async def _folder(self, s, name, yaml_text):
+        """Sicherer Weg in der HA-App: YAML direkt in den Ordner des ESPHome Device Builders legen."""
+        try:
+            d = esphome_dir()
+            if d is None:
+                return self._finish(False, "✖ Der ESPHome-Ordner ist nicht erreichbar. Bitte die PixelPanel-App neu installieren "
+                                           "oder unter Übertragung „Automatisch“ wählen.")
+            d.mkdir(exist_ok=True)
+            path = d / f"{name}.yaml"
+            tmp = d / f".{name}.yaml.pixelpanel"
+            tmp.write_text(yaml_text, "utf-8")
+            os.replace(tmp, path)
+            self.log(f"✔ Konfiguration gespeichert: esphome/{path.name}")
+            self.step = 1
+            self.log("")
+            self.log("Jetzt im ESPHome Device Builder:")
+            self.log(f"  1. Gerät „{name}“ öffnen (taucht nach ein paar Sekunden auf)")
+            self.log("  2. Auf „Installieren“ klicken")
+            self.log("     – allererstes Mal: per USB („Plug into the computer running ESPHome Device Builder“)")
+            self.log("     – danach: „Wirelessly“ (per WLAN)")
+            self._finish(True, "✔ Fertig vorbereitet – Installieren im ESPHome Device Builder.")
+        except Exception as e:  # noqa: BLE001
+            self._finish(False, f"✖ Speichern im ESPHome-Ordner fehlgeschlagen: {e}")
+
     async def _dashboard(self, s, name, yaml_text):
-        base = (s.get("dashboard_url") or "").rstrip("/")
+        """Automatisch über den ESPHome Device Builder (ESPHome ≥ 2026.6, WebSocket /ws);
+        ältere Dashboards (POST /edit + /run) werden weiter unterstützt."""
+        base = dashboard_base(s)
         fname = f"{name}.yaml"
         try:
             async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=None, sock_connect=10)) as sess:
-                if s.get("dashboard_password"):
-                    await sess.post(f"{base}/login", data={"username": s.get("dashboard_user", ""),
-                                                           "password": s["dashboard_password"]})
-                r = await sess.post(f"{base}/edit", params={"configuration": fname}, data=yaml_text.encode("utf-8"))
-                if r.status >= 400:
-                    return self._finish(False, f"✖ Speichern im ESPHome-Dashboard fehlgeschlagen (HTTP {r.status}).")
-                self.log(f"✔ {fname} im ESPHome-Dashboard gespeichert")
-                self.step = 1
-                ws_url = re.sub(r"^http", "ws", base) + "/run"
-                async with sess.ws_connect(ws_url, heartbeat=30) as ws:
-                    await ws.send_json({"type": "spawn", "configuration": fname, "port": "OTA"})
-                    async for m in ws:
-                        if self._cancel:
-                            await ws.close()
-                            return self._finish(False, "■ Abgebrochen.")
-                        if m.type != aiohttp.WSMsgType.TEXT:
-                            break
-                        data = json.loads(m.data)
-                        if data.get("event") == "line":
-                            self.log(data.get("data", ""))
-                        elif data.get("event") == "exit":
-                            if data.get("code") == 0:
-                                return self._finish(True, "✔ Fertig – das Panel startet mit der neuen Software neu.")
-                            return self._finish(False, f"✖ ESPHome hat mit Code {data.get('code')} abgebrochen.")
-                self._finish(False, "✖ Verbindung zum ESPHome-Dashboard unerwartet beendet.")
+                try:
+                    ws = await sess.ws_connect(re.sub(r"^http", "ws", base) + "/ws", heartbeat=30, max_msg_size=0)
+                except aiohttp.WSServerHandshakeError as e:
+                    if e.status in (404, 405):
+                        return await self._dashboard_legacy(sess, s, base, fname, yaml_text)
+                    if e.status in (401, 403):
+                        return self._finish(False, "✖ Der ESPHome Device Builder lässt das Studio nicht herein (HTTP "
+                                                   f"{e.status}). Bitte dort „Disable external authentication“ einschalten.")
+                    raise
+                async with ws:
+                    self._ws = ws
+                    await self._builder(ws, s, name, fname, yaml_text)
+        except (aiohttp.ClientConnectorError, asyncio.TimeoutError, OSError):
+            self._finish(False, f"✖ ESPHome Device Builder unter {base} nicht erreichbar. Im Device Builder unter "
+                                "Konfiguration „Disable external authentication“ einschalten, bei Netzwerk 6052 eintragen, "
+                                "speichern und den Device Builder neu starten.")
         except Exception as e:  # noqa: BLE001
-            self._finish(False, f"✖ ESPHome-Dashboard nicht erreichbar: {e}")
+            self._finish(False, f"✖ ESPHome Device Builder: {e}")
+        finally:
+            self._ws = None
+
+    async def _builder(self, ws, s, name, fname, yaml_text):
+        info = await ws.receive_json(timeout=15)
+        if info.get("esphome_version"):
+            self.log(f"Verbunden mit ESPHome {info['esphome_version']}")
+        mid = {"n": 0}
+        pending = []  # Nachrichten, die beim Warten auf eine Antwort schon ankamen
+
+        async def call(command, **args):
+            mid["n"] += 1
+            m = str(mid["n"])
+            await ws.send_json({"command": command, "message_id": m, "args": args})
+            while True:
+                msg = await ws.receive_json()
+                if msg.get("message_id") == m and ("result" in msg or "error_code" in msg):
+                    return msg
+                pending.append(msg)
+
+        if info.get("requires_auth"):
+            if not s.get("dashboard_password"):
+                return self._finish(False, "✖ Der ESPHome Device Builder verlangt eine Anmeldung. Entweder dort "
+                                           "„Disable external authentication“ einschalten oder Benutzer und Passwort eintragen.")
+            r = await call("auth/login", username=s.get("dashboard_user") or "", password=s["dashboard_password"])
+            if "error_code" in r:
+                return self._finish(False, "✖ Anmeldung am ESPHome Device Builder fehlgeschlagen – Benutzer/Passwort prüfen.")
+
+        r = await call("devices/create", name=name, friendly_name=s.get("friendly_name") or name,
+                       file_content=yaml_text, overwrite=False)
+        if r.get("error_code") == "already_exists":
+            r = await call("devices/update_config", configuration=fname, content=yaml_text)
+        if "error_code" in r:
+            return self._finish(False, f"✖ Speichern im ESPHome Device Builder fehlgeschlagen: {r.get('details') or r['error_code']}")
+        self.log(f"✔ {fname} im ESPHome Device Builder gespeichert")
+        self.step = 1
+
+        # Erst alle Job-Ereignisse abonnieren, dann installieren – so geht keine Zeile verloren
+        mid["n"] += 1
+        follow = str(mid["n"])
+        await ws.send_json({"command": "firmware/follow_jobs", "message_id": follow, "args": {"snapshot": False}})
+        r = await call("firmware/install", configuration=fname, port="OTA")
+        if "error_code" in r:
+            return self._finish(False, f"✖ ESPHome konnte die Installation nicht starten: {r.get('details') or r['error_code']}")
+        job = r.get("result") or {}
+        compile_id = job.get("job_id")
+        deferred = bool(job.get("is_deferred_install"))
+        self._jobs = {compile_id} if compile_id else set()
+        upload_id = None
+
+        def handle(msg):
+            nonlocal upload_id
+            if msg.get("message_id") != follow or "event" not in msg:
+                return None
+            ev, data = msg["event"], msg.get("data") or {}
+            jid = data.get("job_id")
+            if ev == "job_output":
+                if jid in self._jobs:
+                    for ln in str(data.get("line", "")).splitlines():
+                        self.log(ln)
+                return None
+            if data.get("configuration") != fname:
+                return None
+            jtype = data.get("job_type")
+            if jtype == "upload" and (not compile_id or data.get("depends_on") in (compile_id, None, "")):
+                upload_id = jid
+                self._jobs.add(jid)
+            if jid not in self._jobs:
+                return None
+            if ev == "job_started":
+                self.step = 2 if jtype == "upload" else max(self.step, 1)
+            elif ev == "job_cancelled":
+                return (False, "■ Abgebrochen.")
+            elif ev == "job_failed":
+                err = data.get("error") or f"Code {data.get('exit_code')}"
+                if jtype == "upload":
+                    return (False, f"✖ Übertragen per WLAN fehlgeschlagen ({err}). Beim allerersten Mal muss der ESP32 "
+                                   "per USB bespielt werden: im ESPHome Device Builder beim Gerät auf „Installieren“.")
+                return (False, f"✖ Kompilieren fehlgeschlagen ({err}) – Details siehe oben.")
+            elif ev == "job_completed":
+                if jtype == "upload":
+                    return (True, "✔ Fertig – das Panel startet mit der neuen Software neu.")
+                if jtype == "compile" and (deferred or data.get("is_deferred_install")):
+                    return (None, "⚠ Kompiliert – aber das Panel ist gerade nicht erreichbar. ESPHome spielt die Software "
+                                  "automatisch auf, sobald es wieder online ist. Neuer ESP32? Dann einmal im ESPHome Device "
+                                  "Builder beim Gerät auf „Installieren“ → per USB.")
+            return None
+
+        for msg in pending:
+            res = handle(msg)
+            if res:
+                return self._finish(*res) if res[0] is not None else self._finish(False, res[1])
+        while True:
+            if self._cancel:
+                for j in list(self._jobs):
+                    with contextlib.suppress(Exception):
+                        await ws.send_json({"command": "firmware/cancel", "message_id": "c" + str(j), "args": {"job_id": j}})
+                return self._finish(False, "■ Abgebrochen.")
+            try:
+                msg = await ws.receive_json(timeout=2)
+            except asyncio.TimeoutError:
+                continue
+            except TypeError:  # Verbindung geschlossen
+                return self._finish(False, "✖ Verbindung zum ESPHome Device Builder unerwartet beendet.")
+            res = handle(msg)
+            if res:
+                return self._finish(*res) if res[0] is not None else self._finish(False, res[1])
+
+    async def _dashboard_legacy(self, sess, s, base, fname, yaml_text):
+        """Altes ESPHome-Dashboard (vor 2026.6): POST /edit, dann /run per WebSocket."""
+        if s.get("dashboard_password"):
+            await sess.post(f"{base}/login", data={"username": s.get("dashboard_user", ""), "password": s["dashboard_password"]})
+        r = await sess.post(f"{base}/edit", params={"configuration": fname}, data=yaml_text.encode("utf-8"))
+        if r.status >= 400:
+            return self._finish(False, f"✖ Speichern im ESPHome-Dashboard fehlgeschlagen (HTTP {r.status}).")
+        self.log(f"✔ {fname} im ESPHome-Dashboard gespeichert")
+        self.step = 1
+        async with sess.ws_connect(re.sub(r"^http", "ws", base) + "/run", heartbeat=30) as ws:
+            await ws.send_json({"type": "spawn", "configuration": fname, "port": "OTA"})
+            async for m in ws:
+                if self._cancel:
+                    await ws.close()
+                    return self._finish(False, "■ Abgebrochen.")
+                if m.type != aiohttp.WSMsgType.TEXT:
+                    break
+                data = json.loads(m.data)
+                if data.get("event") == "line":
+                    self.log(data.get("data", ""))
+                elif data.get("event") == "exit":
+                    if data.get("code") == 0:
+                        return self._finish(True, "✔ Fertig – das Panel startet mit der neuen Software neu.")
+                    return self._finish(False, f"✖ ESPHome hat mit Code {data.get('code')} abgebrochen.")
+        self._finish(False, "✖ Verbindung zum ESPHome-Dashboard unerwartet beendet.")
 
     def cancel(self):
         self._cancel = True
@@ -1080,6 +1269,7 @@ async def bootstrap():
         "stateWords": yaml_gen.STATE_WORDS,
         "font": {"height": pixelfont.HEIGHT, "glyphs": pixelfont.GLYPHS, "mini": pixelfont.MINI, "miniHeight": pixelfont.MINI_HEIGHT},
         "esphomeInstalled": importlib.util.find_spec("esphome") is not None,
+        "esphomeDir": esphome_dir() is not None,
         "app": APP_MODE,
         "github": {"repo": GITHUB_REPO.strip().strip("/"), "branch": GITHUB_BRANCH},
     }
@@ -1353,6 +1543,29 @@ async def events(req: Request):
                              headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
 
+@app.post("/api/test-dashboard")
+async def test_dashboard(req: Request):
+    """Verbindung zum ESPHome Device Builder prüfen (ohne etwas zu verändern)."""
+    body = await req.json()
+    st = {"dashboard_url": body.get("url") or ""}
+    base = dashboard_base(st)
+    try:
+        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=12, sock_connect=6)) as sess:
+            try:
+                async with sess.ws_connect(re.sub(r"^http", "ws", base) + "/ws") as ws:
+                    info = await ws.receive_json(timeout=8)
+            except aiohttp.WSServerHandshakeError as e:
+                if e.status in (404, 405):
+                    return {"ok": True, "message": "Älteres ESPHome-Dashboard gefunden – funktioniert."}
+                return {"ok": False, "message": f"ESPHome lehnt die Verbindung ab (HTTP {e.status})."}
+        ver = info.get("esphome_version") or "?"
+        if info.get("requires_auth") and not body.get("password"):
+            return {"ok": False, "message": f"ESPHome {ver} gefunden, verlangt aber eine Anmeldung."}
+        return {"ok": True, "message": f"Verbunden – ESPHome {ver}"}
+    except Exception:  # noqa: BLE001
+        return {"ok": False, "message": f"Nicht erreichbar unter {base} – Einstellungen im Device Builder prüfen (siehe unten)."}
+
+
 @app.post("/api/test-ha")
 async def test_ha(req: Request):
     body = await req.json()
@@ -1374,7 +1587,7 @@ async def yaml_preview(req: Request):
     cfg = deep_merge(DEFAULT_CONFIG, await req.json())
     try:
         mode = cfg["settings"].get("deploy_mode")
-        return {"ok": True, "yaml": yaml_gen.generate(cfg, ha.units(), secrets_inline=(mode == "dashboard"))}
+        return {"ok": True, "yaml": yaml_gen.generate(cfg, ha.units(), secrets_inline=inline_secrets(mode))}
     except yaml_gen.GenError as e:
         return {"ok": False, "error": str(e)}
 

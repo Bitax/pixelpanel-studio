@@ -59,8 +59,8 @@ The app signs in to Home Assistant by itself – no address or token needed.
 Settings are kept in the app's storage and included in every HA backup.
 Updates appear like for any other app under *Settings → Apps*.
 
-**Needed for uploading:** the **ESPHome app** (ESPHome Device Builder). In it, enter port **6052**
-under *Configuration → Network* and restart the ESPHome app.
+**Needed for uploading:** the **ESPHome Device Builder** app (installed and started). For the default way
+nothing else has to be set there – see “Uploading” below.
 
 ## First steps
 
@@ -74,21 +74,39 @@ under *Configuration → Network* and restart the ESPHome app.
 
 ![Upload](../images/en/deploy.png)
 
-*Access & security → Upload* offers two methods:
+Under *Access & security → Upload* you choose how the software gets onto the panel:
 
-| | Local (this PC) | ESPHome in HA |
-|---|---|---|
-| Compiles on | your PC | the Home Assistant machine |
-| Needs | Wi-Fi details in the settings | ESPHome app, port 6052 open |
-| Device shows up in the ESPHome dashboard | no | yes |
-| In the Home Assistant app | – | **always this method** |
+| | Local (this PC) | ESPHome folder | Automatic / ESPHome in HA |
+|---|---|---|---|
+| Available in | PC version | Home Assistant app | both |
+| Compiles on | your PC | the Home Assistant machine | the Home Assistant machine |
+| What you do | “Apply & upload to panel” | “Apply & upload to panel”, then **Install** on the device in the **ESPHome Device Builder** | just “Apply & upload to panel” |
+| Needs | Wi-Fi details in the settings | nothing else | “Disable external authentication” on and port 6052 in the Device Builder |
+| Security | – | no open port | Device Builder reachable on your Wi-Fi **without a password** |
+
+**ESPHome folder** is the default in the Home Assistant app and the safest way: the Studio puts the configuration
+straight into the ESPHome Device Builder, where the device appears after a few seconds.
+
+**Setting up Automatic** (once, only if you want it):
+
+1. *Settings → Apps → ESPHome Device Builder → Configuration*
+2. Turn on “Show unused optional configuration options”
+3. Turn on **“Disable external authentication”** → Save
+4. Under **Network** enter `6052` → Save
+5. *Info* tab → **Restart**
+6. In the Studio: method **Automatic**, leave the dashboard address empty → **Test connection**
+
+The Device Builder is then reachable on your Wi-Fi without a password. Only use this if you trust every device on your Wi-Fi.
 
 **Very first upload:** a new ESP32 has to be flashed once by **USB cable**.
 
 - *PC version, local:* plug the ESP32 in by USB, enter the port under *Upload → Device*
   (Windows e.g. `COM3`, see Device Manager → Ports; Mac e.g. `/dev/cu.usbserial-…`), **Upload now**.
   Afterwards clear the field again.
-- *ESPHome in HA:* in the ESPHome app on the device **Install → “Plug into this computer”**.
+- *Home Assistant app:* first **“Apply & upload to panel”** in the Studio (the device appears in the Device Builder),
+  then plug the ESP32 into the Home Assistant machine with a USB data cable and in the **ESPHome Device Builder**
+  choose **Install → “Plug into the computer running ESPHome Device Builder”** on the device.
+  With the *Automatic* method the Studio reports the first time that the panel isn't reachable yet – that's normal.
 
 From then on every update goes over Wi-Fi. The first compile takes several minutes, later ones are much faster.
 

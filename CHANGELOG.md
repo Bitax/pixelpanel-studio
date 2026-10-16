@@ -2,6 +2,17 @@
 
 All notable changes to PixelPanel Studio. *Deutsch weiter unten.*
 
+## 3.2.1 – works with the new ESPHome Device Builder
+
+### Fixed
+- **Upload via Home Assistant** works again with the new **ESPHome Device Builder** (ESPHome 2026.6 and later), which replaced the old dashboard and its interface
+- An empty dashboard address now really uses the default address (before: “not reachable: /edit”)
+
+### New
+- **Upload method “ESPHome folder”** (Home Assistant app, new default): the Studio puts the configuration straight into the ESPHome Device Builder – you just click **Install** there. No open port needed.
+- **Upload method “Automatic”** for the new Device Builder: save, compile and upload with one click, live progress, cancel – with a step-by-step guide and **Test connection** in the settings
+- Optional dashboard user for a password-protected Device Builder
+
 ## 3.2 – animated icons
 
 ### New
@@ -43,6 +54,13 @@ Internal test versions (not published).
 ---
 
 ## Deutsch
+
+### 3.2.1 – passt zum neuen ESPHome Device Builder
+
+- **Übertragen über Home Assistant** funktioniert wieder mit dem neuen **ESPHome Device Builder** (ab ESPHome 2026.6)
+- Leere Dashboard-Adresse nutzt jetzt wirklich die Standardadresse (vorher „nicht erreichbar: /edit“)
+- **Neu: Methode „ESPHome-Ordner“** (Home-Assistant-App, neuer Standard): Das Studio legt die Konfiguration direkt in den Device Builder, dort nur noch **Installieren** klicken – kein offener Port
+- **Neu: Methode „Automatisch“** für den neuen Device Builder – mit Anleitung und **Verbindung testen**
 
 ### 3.2 – animierte Icons
 

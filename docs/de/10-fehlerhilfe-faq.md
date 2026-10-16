@@ -28,11 +28,17 @@ Manche Boards brauchen beim Verbinden einen Druck auf die **BOOT**-Taste.
 **Übertragen per WLAN findet das Panel nicht.** Unter *Übertragung → Gerät* die IP-Adresse des Panels eintragen
 (steht im Router oder in Home Assistant beim Gerät).
 
-**ESPHome in HA: „Verbindung fehlgeschlagen“.** In der ESPHome-App unter *Konfiguration → Netzwerk* den Port
-**6052** eintragen und die App neu starten. Hast du dort ein Passwort gesetzt, unter *Dashboard-Passwort* eintragen.
+**Automatisch: „ESPHome Device Builder nicht erreichbar“.** Der neue Device Builder (ab ESPHome 2026.6) öffnet
+Port 6052 nur, wenn **beides** eingestellt ist: „Disable external authentication“ **und** Netzwerk-Port `6052`.
+Danach den Device Builder neu starten und im Studio **Verbindung testen**. Willst du das nicht, nimm die Methode **ESPHome-Ordner**.
 
-**Home-Assistant-App, allererste Installation.** In der ESPHome-App beim Gerät *Installieren* → *Plug into this computer*
-(braucht Chrome oder Edge) – oder *Manual download* und die Datei über [web.esphome.io](https://web.esphome.io) aufspielen.
+**Home-Assistant-App, allererste Installation.** Im ESPHome Device Builder beim Gerät *Installieren* →
+*Plug into the computer running ESPHome Device Builder* (ESP32 am Home-Assistant-Rechner) – oder *Plug into this computer*
+(braucht Chrome oder Edge und Home Assistant über `https://`) – oder *Manual download* und die Datei über
+[web.esphome.io](https://web.esphome.io) aufspielen.
+
+**Das Gerät taucht im ESPHome Device Builder nicht auf (ESPHome-Ordner).** Ein paar Sekunden warten und die Seite neu laden.
+Hilft das nicht, die PixelPanel-App einmal neu starten – ab Version 3.2.1 braucht sie Zugriff auf den Konfigurationsordner.
 
 **Speicher zu knapp.** Die Board-Prüfung unter *Panel & Hardware* warnt rechtzeitig. Weniger Seiten/Entitäten,
 eine einfachere Animation oder ein ESP32-S3 helfen. Nach dem Übertragen zeigt *Übertragen* die echte Belegung (RAM/Flash).

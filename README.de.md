@@ -37,7 +37,7 @@ mit pixelgenauer Live-Vorschau, und spiel sie per ESPHome aufs Panel. *English: 
 
 1. *Einstellungen → Apps → App-Store → ⋮ → Repositories* → `https://github.com/Bitax/pixelpanel-studio` hinzufügen
 2. **PixelPanel Studio** installieren, starten, **In Seitenleiste anzeigen** einschalten
-3. Zusätzlich die **ESPHome-App**; dort unter *Konfiguration → Netzwerk* den Port **6052** eintragen
+3. Zusätzlich die App **ESPHome Device Builder** – das Studio legt die Konfiguration dort ab, du klickst auf **Installieren**
 
 Kein Token, keine extra Anmeldung – die App läuft in der Seitenleiste von Home Assistant.
 

@@ -757,7 +757,8 @@ const EXPLAIN = {
   "Panel an": "Schaltet das Panel sofort an oder aus – ohne Speichern und ohne Übertragen. Geht auch in Home Assistant über den Schalter „Anzeige“.",
   "Im WLAN freigeben": "Erlaubt Handys und Tablets in deinem WLAN, das Studio zu öffnen – aber nur mit Benutzername und Passwort. Aus dem Internet ist es nie erreichbar.",
   "Benutzername": "Der Name, mit dem du dich am Handy oder Tablet anmeldest. Frei wählbar.",
-  "Dashboard-Passwort": "Nur nötig, wenn du für das ESPHome-Add-on in Home Assistant ein eigenes Passwort gesetzt hast. Sonst leer lassen.",
+  "Dashboard-Passwort": "Nur nötig, wenn dein ESPHome Device Builder ein eigenes Passwort hat. In Home Assistant ist das normalerweise nicht so – dann leer lassen.",
+  "Dashboard-Benutzer": "Nur nötig, wenn dein ESPHome Device Builder Benutzername und Passwort verlangt. Sonst leer lassen.",
   "Angemeldet als": "Mit diesem Namen bist du gerade auf diesem Gerät angemeldet. „Abmelden“ beendet die Anmeldung nur hier.",
   "Ersatz-WLAN": "Findet das Panel dein WLAN nicht (z. B. neues Passwort), öffnet es ein eigenes kleines WLAN. Mit diesem Passwort verbindest du dich dann mit dem Handy und trägst das neue WLAN ein. Es wird automatisch erzeugt – du musst es dir nicht merken, es steht immer hier.",
   "Zu lange Texte laufen lassen": "An: Passt ein Text nicht auf das Panel, läuft er als Laufschrift durch. Aus: Er wird verkleinert und notfalls gekürzt.",
@@ -796,9 +797,9 @@ const EXPLAIN = {
   "Gerätename": "Ein kurzer Name ohne Leerzeichen, unter dem das Panel im Netzwerk erreichbar ist (z. B. „pixelpanel“). Wenn du mehrere Panels hast, braucht jedes einen eigenen Namen.",
   "Anzeigename": "So heißt das Panel in Home Assistant, z. B. „Küchen-Panel“. Darf Leerzeichen und Umlaute haben.",
   "Zeitzone": "Für die richtige Uhrzeit. In Deutschland, Österreich und der Schweiz bleibt hier „Europe/Berlin“ stehen.",
-  "Methode": "„Lokal“: Dieser PC baut die Software und schickt sie zum Panel – empfohlen. „ESPHome in HA“: Home Assistant macht das (dafür muss dort das ESPHome-Add-on installiert sein).",
+  "Methode": "Wie die Software aufs Panel kommt. „Lokal“: Dieser PC baut sie und schickt sie zum Panel. „ESPHome-Ordner“: Das Studio legt sie in den ESPHome Device Builder, du klickst dort auf „Installieren“ – der sicherste Weg. „Automatisch“ bzw. „ESPHome in HA“: Ein Klick hier, und der ESPHome Device Builder baut und überträgt alles selbst (dafür muss er im WLAN ohne Anmeldung erreichbar sein).",
   "Gerät": "Beim allerersten Übertragen steckt der ESP32 per USB-Kabel am PC – dann hier den Anschluss eintragen (z. B. COM3; im Windows-Geräte-Manager unter „Anschlüsse“ zu sehen). Danach das Feld einfach leer lassen: Das Panel wird automatisch über WLAN gefunden.",
-  "Dashboard-Adresse": "Die Adresse des ESPHome-Add-ons in Home Assistant, meist mit :6052 am Ende.",
+  "Dashboard-Adresse": "Die Adresse des ESPHome Device Builders, mit :6052 am Ende. In der Home-Assistant-App einfach leer lassen.",
   "Netzwerk (SSID)": "Der Name deines WLANs – genau so, wie er im Handy bei den WLAN-Netzen steht (Groß-/Kleinschreibung beachten).",
   "Passwort": "Das WLAN-Passwort. Es bleibt auf diesem PC und im Panel, es wird nirgendwo hochgeladen.",
   "API-Schlüssel": "Ein geheimer Schlüssel, damit nur dein Home Assistant mit dem Panel spricht. Einfach auf „Neu“ klicken. Hat dein Panel schon einen (aus einer früheren ESPHome-Datei), dann genau den eintragen.",
@@ -1828,8 +1829,10 @@ function viewDevices() {
 
 function viewDeploy() {
   const s = S.draft.settings;
-  const local = s.deploy_mode !== "dashboard";
-  const target = local ? (s.device_host || `${s.device_name}.local (automatisch)`) : s.dashboard_url;
+  const mode = deployMode();
+  const local = mode === "local";
+  const target = local ? (s.device_host || `${s.device_name}.local (automatisch)`)
+    : mode === "folder" ? `esphome/${s.device_name}.yaml` : (s.dashboard_url || (S.boot.app ? "http://172.30.32.1:6052" : "http://homeassistant.local:6052"));
   const warn = [];
   const vb = versionBanner();
   if (vb) warn.push(vb);
@@ -1840,14 +1843,16 @@ function viewDeploy() {
   const consoleEl = el("div", { class: "console", id: "console" });
   const yamlBox = el("div");
   const v = el("div", { class: "view" },
-    head("Übertragen", "Erzeugt die ESPHome-Konfiguration, speichert sie, kompiliert und spielt sie per WLAN aufs Panel.",
+    head("Übertragen", mode === "folder" ? "Erzeugt die ESPHome-Konfiguration und legt sie in den ESPHome Device Builder – dort installierst du sie mit einem Klick."
+      : "Erzeugt die ESPHome-Konfiguration, speichert sie, kompiliert und spielt sie per WLAN aufs Panel.",
       el("button", { class: "btn primary big", id: "deploy-btn", onclick: startDeploy }, el("span", { html: SVG.upload }), "Jetzt übertragen")),
     warn,
     group("Ziel", [
-      row("Methode", el("span", {}, local ? "Lokal auf diesem PC (ESPHome)" : "ESPHome-Dashboard in Home Assistant")),
+      row("Methode", el("span", {}, local ? "Lokal auf diesem PC (ESPHome)" : mode === "folder" ? "ESPHome-Ordner (Installieren im Device Builder)" : "Automatisch über den ESPHome Device Builder")),
       row("Gerät", el("span", { class: "ent-id", style: { fontSize: "12px" } }, target)),
       row("Aktive Seiten", el("span", {}, enabledPages().map((p) => p.name).join(", ") || "—")),
-    ], "Der erste Flash muss einmal per USB passieren (unter Einstellungen → Zugänge & Sicherheit → „Gerät“ den COM-Port eintragen, z. B. COM3). Danach geht alles über WLAN. Das erste Kompilieren dauert ein paar Minuten, danach deutlich schneller."),
+    ], local ? "Der erste Flash muss einmal per USB passieren (unter Einstellungen → Zugänge & Sicherheit → „Gerät“ den COM-Port eintragen, z. B. COM3). Danach geht alles über WLAN. Das erste Kompilieren dauert ein paar Minuten, danach deutlich schneller."
+      : "Ein neuer ESP32 muss einmal per USB bespielt werden: im ESPHome Device Builder beim Gerät auf „Installieren“ → per USB. Danach geht alles über WLAN. Das erste Kompilieren dauert ein paar Minuten."),
     group("Fortschritt", [stepsEl, el("div", { id: "usage" }), consoleEl,
       el("div", { class: "row" }, el("div", { class: "label" }), el("button", { class: "btn danger", id: "cancel-btn", onclick: () => api("/api/deploy/cancel", { method: "POST" }) }, "Abbrechen"))]),
     group("ESPHome-YAML", [el("div", { class: "row" }, el("div", { class: "label" }, "Die komplette Konfiguration, die aufs Panel geht", el("small", {}, "Wird automatisch erzeugt – nicht von Hand bearbeiten.")),
@@ -2175,10 +2180,25 @@ function viewSettings() {
     explainToggle(),
     body);
 }
+// Übertragungswege: lokal (nur PC-Version), ESPHome-Ordner (nur App), automatisch über den ESPHome Device Builder
+function deployModes() {
+  const m = [];
+  if (!S.boot.app) m.push(["local", "Lokal (dieser PC)"]);
+  if (S.boot.esphomeDir) m.push(["folder", "ESPHome-Ordner"]);
+  m.push(["dashboard", S.boot.app ? "Automatisch" : "ESPHome in HA"]);
+  return m;
+}
+function deployMode() {
+  const v = S.draft.settings.deploy_mode || "local";
+  const ok = deployModes().map((x) => x[0]);
+  return ok.includes(v) ? v : ok[0];
+}
 function settingsAccess() {
   const s = "settings";
-  const local = S.draft.settings.deploy_mode !== "dashboard";
+  const mode = deployMode();
+  const local = mode === "local";
   const testRes = el("span", { class: "status" });
+  const dbRes = el("span", { class: "status" });
   return [
     S.boot.app ? group("Home Assistant", [
       el("div", { class: "row" }, el("div", { class: "label" }, "Verbunden über die Home-Assistant-App",
@@ -2197,15 +2217,35 @@ function settingsAccess() {
     group("WLAN", [
       row("Netzwerk (SSID)", textField(`${s}.wifi_ssid`, { wide: false })),
       row("Passwort", textField(`${s}.wifi_password`, { type: "password", wide: false })),
-    ], local ? "Wird lokal in secrets.yaml abgelegt." : "Leer lassen, wenn deine secrets.yaml im ESPHome-Add-on schon wifi_ssid / wifi_password enthält."),
+    ], local ? "Wird lokal in secrets.yaml abgelegt." : "Leer lassen, wenn die secrets.yaml im ESPHome Device Builder schon wifi_ssid / wifi_password enthält."),
     group("Übertragung", [
-      row("Methode", seg(`${s}.deploy_mode`, [["local", "Lokal (dieser PC)"], ["dashboard", "ESPHome in HA"]])),
-      local
-        ? row("Gerät", textField(`${s}.device_host`, { placeholder: "leer = automatisch · IP · oder COM3", wide: false }), "IP-Adresse fürs WLAN-Update, oder COM-Port beim allerersten Flash")
-        : row("Dashboard-Adresse", textField(`${s}.dashboard_url`, { placeholder: S.boot.app ? "http://172.30.32.1:6052" : "http://homeassistant.local:6052" }),
-          S.boot.app ? "ESPHome-App → Konfiguration → Netzwerk → Port 6052 eintragen; leer = http://172.30.32.1:6052" : "ESPHome-App → Konfiguration → Netzwerk → Port 6052 freigeben"),
-      !local && row("Dashboard-Passwort", textField(`${s}.dashboard_password`, { type: "password", wide: false, placeholder: "falls gesetzt" })),
-    ], local ? "Kompiliert mit ESPHome auf diesem PC und spielt die Firmware direkt aufs Panel." : "Speichert die YAML im ESPHome-Add-on und lässt dort kompilieren & installieren – so taucht das Gerät auch im ESPHome-Dashboard auf."),
+      row("Methode", seg(`${s}.deploy_mode`, deployModes())),
+      local && row("Gerät", textField(`${s}.device_host`, { placeholder: "leer = automatisch · IP · oder COM3", wide: false }), "IP-Adresse fürs WLAN-Update, oder COM-Port beim allerersten Flash"),
+      mode === "folder" && el("div", { class: "row" }, el("div", { class: "label" }, "So funktioniert es",
+        el("small", {}, "„Übernehmen & aufs Panel“ legt die Konfiguration direkt in den ESPHome Device Builder. Dort beim Gerät auf „Installieren“ klicken – beim allerersten Mal per USB, danach per WLAN. Es muss kein Port geöffnet werden."))),
+      mode === "dashboard" && row("Dashboard-Adresse", textField(`${s}.dashboard_url`, { placeholder: S.boot.app ? "leer = http://172.30.32.1:6052" : "http://homeassistant.local:6052" }),
+        S.boot.app ? "Leer lassen – dann derselbe Home-Assistant-Rechner" : "Adresse des ESPHome Device Builders mit Port 6052"),
+      mode === "dashboard" && !S.boot.app && row("Dashboard-Benutzer", textField(`${s}.dashboard_user`, { wide: false, placeholder: "falls gesetzt" })),
+      mode === "dashboard" && row("Dashboard-Passwort", textField(`${s}.dashboard_password`, { type: "password", wide: false, placeholder: "falls gesetzt" })),
+      mode === "dashboard" && el("div", { class: "row" }, el("div", { class: "label" }, dbRes),
+        el("button", { class: "btn", onclick: async () => {
+          dbRes.replaceChildren("Teste …");
+          const r = await api("/api/test-dashboard", { method: "POST", body: JSON.stringify({ url: S.draft.settings.dashboard_url, password: S.draft.settings.dashboard_password }) });
+          dbRes.replaceChildren(el("span", { class: "dot " + (r.ok ? "ok" : "err") }), r.message);
+        } }, "Verbindung testen")),
+      mode === "dashboard" && S.boot.app && el("div", { class: "row", style: { display: "block" } },
+        el("div", { class: "label" }, "Einmalig im ESPHome Device Builder einstellen"),
+        el("ol", { class: "howto" },
+          el("li", {}, "Home Assistant → Einstellungen → Apps → ESPHome Device Builder → Reiter „Konfiguration“"),
+          el("li", {}, "„Nicht verwendete optionale Konfigurationsoptionen einblenden“ einschalten"),
+          el("li", {}, "„Disable external authentication“ einschalten → Speichern"),
+          el("li", {}, "Bei „Netzwerk“ 6052 eintragen → Speichern"),
+          el("li", {}, "Reiter „Info“ → Neu starten, dann hier „Verbindung testen“")),
+        el("div", { class: "banner warn", style: { marginTop: "8px" } }, el("div", {}, el("b", {}, "Gut zu wissen"),
+          "Damit ist der ESPHome Device Builder in deinem WLAN ohne Passwort erreichbar. Lieber nicht? Dann „ESPHome-Ordner“ wählen – dort klickst du nur selbst auf „Installieren“."))),
+    ], mode === "local" ? "Kompiliert mit ESPHome auf diesem PC und spielt die Firmware direkt aufs Panel."
+      : mode === "folder" ? "Sicherer Weg: kein offener Port, nichts an ESPHome umstellen."
+        : "Speichert die Konfiguration im ESPHome Device Builder, lässt dort kompilieren und spielt sie per WLAN auf – alles mit einem Klick."),
     group("Sicherheit", [
       row("API-Schlüssel", el("span", { style: { display: "flex", gap: "6px" } }, textField(`${s}.api_key`, { placeholder: "Base64, 32 Byte" }),
         el("button", { class: "btn", onclick: () => {

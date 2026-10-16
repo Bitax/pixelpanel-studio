@@ -27,11 +27,17 @@ which COM port appears; install the USB driver (CP210x or CH340) if needed. Some
 **Wi-Fi upload can't find the panel.** Enter the panel's IP address under *Upload → Device*
 (see your router or the device in Home Assistant).
 
-**ESPHome in HA: “connection failed”.** In the ESPHome app enter port **6052** under *Configuration → Network* and
-restart it. If you set a password there, enter it under *Dashboard password*.
+**Automatic: “ESPHome Device Builder not reachable”.** The new Device Builder (ESPHome 2026.6 and later) only opens
+port 6052 when **both** are set: “Disable external authentication” **and** network port `6052`. Then restart the
+Device Builder and click **Test connection** in the Studio. Don't want that? Use the **ESPHome folder** method.
 
-**Home Assistant app, very first install.** In the ESPHome app on the device: *Install* → *Plug into this computer*
-(needs Chrome or Edge) – or *Manual download* and flash the file via [web.esphome.io](https://web.esphome.io).
+**Home Assistant app, very first install.** In the ESPHome Device Builder on the device: *Install* →
+*Plug into the computer running ESPHome Device Builder* (ESP32 on the Home Assistant machine) – or *Plug into this computer*
+(needs Chrome or Edge and Home Assistant via `https://`) – or *Manual download* and flash the file via
+[web.esphome.io](https://web.esphome.io).
+
+**The device doesn't show up in the ESPHome Device Builder (ESPHome folder).** Wait a few seconds and reload the page.
+If that doesn't help, restart the PixelPanel app once – from version 3.2.1 it needs access to the configuration folder.
 
 **Not enough memory.** The board check under *Panel & hardware* warns early. Fewer pages/entities, a simpler animation
 or an ESP32-S3 help. After uploading, *Upload* shows the real usage (RAM/flash).

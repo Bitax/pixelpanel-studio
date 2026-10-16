@@ -37,7 +37,7 @@ see a pixel-exact live preview and push it to the panel via ESPHome. *Deutsch: [
 
 1. *Settings → Apps → App store → ⋮ → Repositories* → add `https://github.com/Bitax/pixelpanel-studio`
 2. Install **PixelPanel Studio**, start it, enable **Show in sidebar**
-3. You also need the **ESPHome app**; in it set port **6052** under *Configuration → Network*
+3. You also need the **ESPHome Device Builder** app – the Studio puts the configuration there and you click **Install**
 
 No token, no extra login – the app runs in the Home Assistant sidebar.
 
