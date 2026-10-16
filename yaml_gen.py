@@ -8,10 +8,11 @@ Jede Seite kann beliebige Home-Assistant-Entitäten nutzen; alle Werte kommen
 als text_sensor aufs Panel und werden dort formatiert.
 """
 import json
+import math
 import re
 
 from geometry import ESP_RESERVE, SAFETY, Geom, hw_plan, power_cfg
-from icons import ICONS, PALETTE, WEATHER, WATER_AUTO
+from icons import ICONS, PALETTE, WEATHER, WATER_AUTO, ANIM, ACTIVE_STATES
 from pixelfont import GLYPHS as FONT, HEIGHT as FONT_H, MINI, MINI_HEIGHT as MINI_H
 from version import VERSION
 import boards as hwboards
@@ -257,6 +258,18 @@ out += ip[i];
 }
 if (!fp.empty()) { out += ','; out += fp; }
 return sign + out;
+};
+// 3.2: „an / läuft“ für animierte Icons – Zahl > Schwelle (ohne Schwelle > 0) oder ein bekannter Zustand
+auto is_act = [&](const std::string& in, bool ht, float thr) -> bool {
+size_t a = 0, b = in.size();
+while (a < b && isspace((unsigned char) in[a])) a++;
+while (b > a && isspace((unsigned char) in[b - 1])) b--;
+std::string s;
+for (size_t i = a; i < b; i++) s += (char) tolower((unsigned char) in[i]);
+if (is_num(s)) { float f = strtof(s.c_str(), nullptr); return ht ? f > thr : f > 0; }
+static const char* const AW[] = {@ACTIVE@, nullptr};
+for (int i = 0; AW[i]; i++) if (s == AW[i]) return true;
+return false;
 };
 // Text aus Home Assistant für die Pixelschrift: Umlaute/€/° auf die Zusatzzeichen, Unbekanntes weglassen
 auto asc = [](const std::string& in) -> std::string {
@@ -609,6 +622,7 @@ py = yy;
     "\n".join(f"case '{k}': FR(xa, ya, ww, hh, {color(v)}); break;" for k, v in PALETTE.items()),
     "\n".join(f'if (s == "{k}") return std::string("{v}");' for k, v in STATE_WORDS.items()),
 )
+PRELUDE = PRELUDE.replace("@ACTIVE@", ", ".join(cstr(w) for w in ACTIVE_STATES))
 
 
 def prelude_for(lang):
@@ -699,6 +713,46 @@ def icon_line_cpp(cx, icon, title, acc, num_var="num", raw_var="raw"):
     if not ref:
         return "", None, 0, None
     return ref[0] + "\n", ref[1], ref[2], ref[3]
+
+
+def anim_of(o):
+    """Icon der Seite, wenn es animiert werden soll (3.2), sonst None."""
+    ic = (o or {}).get("icon") or ""
+    return ic if o.get("icon_anim") and ic in ANIM else None
+
+
+def anim_thr(o):
+    """„Läuft ab“-Schwelle als C++-Argumente (hat_schwelle, wert)."""
+    v = str((o or {}).get("anim_above") if (o or {}).get("anim_above") is not None else "").strip().replace(",", ".")
+    # gleiche Zahlenregel wie die Vorschau (isNum in renderer.js)
+    if re.fullmatch(r"[-+]?(\d+\.?\d*|\.\d+)([eE][-+]?\d+)?", v):
+        x = float(v)
+        if math.isfinite(x):
+            return "true", f"{x!r}f"
+    return "false", "0.0f"
+
+
+def anim_icon_cpp(icon, active):
+    """Animiertes Icon: (Deklarationen, Ausdruck für den Icon-Zeiger, Höhe). active = C++-Ausdruck (bool)."""
+    a = ANIM[icon]
+    names = []
+    for n in [icon, *a["frames"], a["off"]]:
+        if n and n not in names:
+            names.append(n)
+    decl = "\n".join(icon_cpp(n) for n in names)
+    frames = ", ".join(f"ICON_{n.upper()}" for n in a["frames"])
+    decl += f"\nstatic const char* const* const AF[] = {{{frames}}};\n"
+    idle = f"ICON_{(a['off'] or icon).upper()}"
+    expr = f"(({active}) ? AF[(millis() / {a['ms']}u) % {len(a['frames'])}u] : {idle})"
+    return decl, expr, len(ICONS[icon])
+
+
+def anim_active_cpp(o, cx, pid, raw_var="raw"):
+    """C++-Ausdruck: ist das Gerät an / läuft es? Eigene Entität oder der angezeigte Wert."""
+    ht, thr = anim_thr(o)
+    ent = (o.get("anim_entity") or "").strip()
+    src = cx.sensor(f"{pid}_an", ent) if ent else raw_var
+    return f"is_act({src}, {ht}, {thr})"
 
 
 GREY = "Color(142, 142, 147)"
@@ -949,7 +1003,11 @@ def page_value(p, cx, pid):
     bool num = is_num(raw);
     std::vector<Ln> L;
     """
-    icode, ic, ih, pal = icon_line_cpp(cx, icon, title, acc)
+    if anim_of(o):
+        icode, ic, ih = anim_icon_cpp(icon, anim_active_cpp(o, cx, pid))
+        pal = "nullptr"
+    else:
+        icode, ic, ih, pal = icon_line_cpp(cx, icon, title, acc)
     if ic or title:
         code += icode + f"{{ Ln l = mk({cstr(title)}, {acc}, 1, 2); l.sc = {tsc(o)}; {f'l.ic = {ic}; l.ih = {ih}; l.pal = {pal};' if ic else ''} L.push_back(l); }}\n"
     code += f"""
@@ -1002,7 +1060,11 @@ def page_entity(p, cx, pid):
     """
     if title:
         code += f"{{ Ln l = mk({cstr(title)}, {acc}, 1, 2); l.sc = {tsc(o)}; L.push_back(l); }}\n"
-    icode, ic, ih, pal = icon_line_cpp(cx, o.get("icon") or "", "", acc)
+    if anim_of(o):
+        icode, ic, ih = anim_icon_cpp(o["icon"], anim_active_cpp(o, cx, pid))
+        pal = "nullptr"
+    else:
+        icode, ic, ih, pal = icon_line_cpp(cx, o.get("icon") or "", "", acc)
     iconline = (icode + f"{{ Ln l = mk(\"\", {main}, 0, 0); l.ic = {ic}; l.ih = {ih}; l.pal = {pal}; L.push_back(l); }}\n") if ic else ""
     top = o.get("icon_pos", "top") != "bottom"
     if top:
@@ -1094,12 +1156,18 @@ def page_timer(p, cx, pid):
     if icon == "water_auto":
         icon = WATER_AUTO[-1][1]
     code = f"ICOL = {color(o.get('icon_color') or '#0a84ff')};\n"
-    ref = icon_ref(cx, icon)
-    code += (ref[0] + "\n") if ref else ""
     code += f"""
-    std::vector<Ln> L;
     int r = id({t}_rem);
     bool done = r <= 0 && id({t}_done) != 0;
+    """
+    if anim_of(o):
+        decl, expr, ih = anim_icon_cpp(icon, f"r > 0 && !id({t}_pz)")
+        ref = (decl, expr, ih, "nullptr")
+    else:
+        ref = icon_ref(cx, icon)
+    code += (ref[0] + "\n") if ref else ""
+    code += """
+    std::vector<Ln> L;
     char buf[24];
     """
     if title or ref:
@@ -1134,7 +1202,18 @@ def page_timer(p, cx, pid):
         code += f"""
     if (r > 0 && id({t}_max) > 0) {{ Ln b = mk("", {acc}, 1, 4); b.bar = std::max(0, (int) ((long) (id({t}_max) - r) * 1000 / id({t}_max))); L.push_back(b); }}
     """
-    return code + f"lay(L, {lay_args(o)});\n"
+    code += f"lay(L, {lay_args(o)});\n"
+    dm = timer_done_ms(o)
+    if o.get("done_blink") and dm:
+        # 3.2: Rahmen blinkt, solange „FERTIG“ angezeigt wird (0,4 s an / 0,4 s aus)
+        code += f"""
+    {{ uint32_t nw = millis();
+    if (done && nw + 1 - id({t}_done) < {dm}u && (nw / 400u) % 2u == 0) {{
+    int bw = std::max(1, std::min(DW, DH) / 48);
+    for (int k = 0; k < bw; k++) RC(k, k, DW - 2 * k, DH - 2 * k, {color(o.get("blink_color") or "#ff453a")});
+    }} }}
+    """
+    return code
 
 
 TIMER_HELPERS = """

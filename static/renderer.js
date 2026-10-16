@@ -797,6 +797,28 @@
     const dateAlt = (t) => (T.months ? `${T.wd[t.getDay()]} ${t.getDate()}\n${t.getDate()} ${T.months[t.getMonth()]}`
       : `${T.wd[t.getDay()]} ${pad(t.getDate())}.\n${pad(t.getDate())}.${pad(t.getMonth() + 1)}.`);
     const mk = (t, c, role, pri, extra) => Object.assign({ t, c, role, pri, ic: null, deg: false, bar: -1, sc: 0, tk: 0, qq: 0, alt: "" }, extra || {});
+    // ---- 3.2: animierte Icons (wie anim_icon_cpp / is_act in yaml_gen.py)
+    const ANIM = assets.iconAnim || {};
+    const ACTIVE = new Set(assets.activeStates || []);
+    const animOf = (o) => (o.icon_anim && o.icon && ANIM[o.icon] ? o.icon : null);
+    const animThr = (o) => {
+      const v = String(o.anim_above ?? "").trim().replace(",", ".");
+      return isNum(v) && Number.isFinite(parseFloat(v)) ? Math.fround(parseFloat(v)) : null;
+    };
+    const isAct = (raw, thr) => {
+      const v = String(raw ?? "").trim().toLowerCase();
+      if (isNum(v)) { const f = Math.fround(parseFloat(v)); return thr !== null ? f > thr : f > 0; }
+      return ACTIVE.has(v);
+    };
+    // Bild der Animation zur Zeit ms – aktiv: Einzelbilder im Wechsel, sonst „aus“-Bild bzw. normales Icon
+    const animPick = (s, icon, active) => {
+      const a = ANIM[icon];
+      if (!active) return a.off || icon;
+      s.anim = true;
+      return a.frames[Math.floor((s.ms >>> 0) / a.ms) % a.frames.length];
+    };
+    const animSrc = (o, ctx, raw) => (o.anim_entity ? stStr(ctx.states, o.anim_entity) : raw);
+    const doneMs = (o) => Math.max(0, Math.min(240, toInt(o.done_minutes ?? 2, 2))) * 60000;
     const tscOf = () => 0;
     // Zu langer Text (pro Seite/Feld) – wie overflow_cpp in yaml_gen.py
     const SCROLL_SPEEDS = { slow: 50, normal: 35, fast: 22 };
@@ -985,6 +1007,7 @@
           ic = WATER_AUTO[0][1];
           if (num) { const wf = Math.fround(parseFloat(raw)); for (let k = 1; k < WATER_AUTO.length; k++) if (wf >= WATER_AUTO[k - 1][0]) ic = WATER_AUTO[k][1]; }
         }
+        if (animOf(o)) ic = animPick(s, o.icon, isAct(animSrc(o, ctx, raw), animThr(o)));
         const L = [];
         if (title) L.push(mk(title, acc, 1, 2, { sc: tscOf(o) }));
         const top = o.icon_pos !== "bottom";
@@ -1155,6 +1178,7 @@
           ic = WATER_AUTO[0][1];
           if (num) { const wf = Math.fround(parseFloat(raw)); for (let k = 1; k < WATER_AUTO.length; k++) if (wf >= WATER_AUTO[k - 1][0]) ic = WATER_AUTO[k][1]; }
         }
+        if (animOf(o)) ic = animPick(s, o.icon, isAct(animSrc(o, ctx, raw), animThr(o)));
         const L = [];
         if (title || ic) L.push(mk(title, acc, 1, 2, { ic, sc: tscOf(o) }));
         L.push(mk(num ? numFmt(parseFloat(raw), dec, o.thousands !== false) : word(raw), main, 0, 0));
@@ -1186,7 +1210,8 @@
         const TX = T;
         const r = Tm.rem, done = r <= 0 && Tm.done !== 0;
         s.ICOL = hex(o.icon_color || "#0a84ff");
-        const tic = o.icon === "water_auto" ? WATER_AUTO[WATER_AUTO.length - 1][1] : o.icon;
+        let tic = o.icon === "water_auto" ? WATER_AUTO[WATER_AUTO.length - 1][1] : o.icon;
+        if (animOf(o)) tic = animPick(s, o.icon, r > 0 && !Tm.pz);
         const hasIcon = tic && icons[tic];
         const title = asciiText(o.title || "");
         const L = [];
@@ -1202,7 +1227,17 @@
             : `${TX.end} ${pad(eh)}:${pad(Math.trunc(e / 60) % 60)}`, GREY, 1, 3));
         }
         if (o.show_bar !== false && r > 0 && Tm.max > 0) L.push(mk("", acc, 1, 4, { bar: Math.max(0, Math.trunc((Tm.max - r) * 1000 / Tm.max)) }));
-        return s.lay(L, ...layArgs(o));
+        const info = s.lay(L, ...layArgs(o));
+        // 3.2: Rahmen blinkt, solange „FERTIG“ angezeigt wird (0,4 s an / 0,4 s aus)
+        const dm = doneMs(o), nw = s.ms >>> 0;
+        if (o.done_blink && dm && done && ((nw + 1 - Tm.done) >>> 0) < dm) {
+          s.anim = true;
+          if (Math.floor(nw / 400) % 2 === 0) {
+            const bw = Math.max(1, Math.trunc(Math.min(s.DW, s.DH) / 48)), bc = hex(o.blink_color || "#ff453a");
+            for (let k = 0; k < bw; k++) s.RC(k, k, s.DW - 2 * k, s.DH - 2 * k, bc);
+          }
+        }
+        return info;
       },
       stack(s, o, ctx) {
         const rects = ctx.geom && ctx.geom.stackRects(o.layout);
@@ -1232,7 +1267,7 @@
     }
 
     return {
-      asciiText, geo, listFit, histKey, plist, sizeOf, iconOf, setCustomIcons,
+      asciiText, geo, listFit, histKey, plist, sizeOf, iconOf, setCustomIcons, isAct, animThr,
       // items: [{page, area}] – zeichnet Seiten in eine W×H-Fläche, liefert Puffer + Farbsumme (+ gewählte Schriftgröße)
       // trans (optional): { prev: [{page, area}], p: 0..1000, style, ease } – Seitenwechsel wie transition_cpp
       renderFrame(W, H, items, ctx, trans) {
@@ -1381,7 +1416,7 @@
           }
           Object.assign(s, { TX: 0, TY: 0, GX0: 0, GY0: 0, GX1: W, GY1: H, AL: 255 });
         }
-        return { buf: s.buf, acc: s.acc, info, scrolled: !!s.scrolled, long: !!s.long };
+        return { buf: s.buf, acc: s.acc, info, scrolled: !!s.scrolled || !!s.anim, long: !!s.long };
       },
     };
   }

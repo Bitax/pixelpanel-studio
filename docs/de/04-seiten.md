@@ -87,6 +87,7 @@ Ein großer Wert – z. B. Strompreis, PV-Leistung, Kurs, Raumtemperatur.
 | **Angezeigter Wert** | Zustand oder ein Attribut der Entität |
 | **Titel auf dem Panel** | kurzes Wort über dem Wert, z. B. STROM |
 | **Icon** | kleines Bild neben dem Titel ([Kapitel 9](09-feedback-icons.md)) |
+| **Icon animieren** | nur bei Icons, die sich bewegen können – siehe [Animierte Icons](#animierte-icons) |
 | **Einheit** | leer = Einheit aus Home Assistant |
 | **Nachkommastellen** | Automatisch, 0–3 |
 | **Tausenderpunkte** | 1.234 statt 1234 |
@@ -104,10 +105,44 @@ Genau eine Entität, groß, mit einem Icon darüber oder darunter.
 |---|---|
 | **Entität / Angezeigter Wert** | wie bei *Wert* |
 | **Icon** und **Position** | Icon oben oder unten |
+| **Icon animieren** | wie bei *Wert* – siehe [Animierte Icons](#animierte-icons) |
 | **Titel (optional)**, **Einheit**, **Nachkommastellen** | wie bei *Wert* |
 
 Beispiel Wassertank: Entität = Füllstand in %, Icon = **Füllstand automatisch** – das Icon zeigt je nach
 Prozentwert leer, halb oder voll.
+
+### Animierte Icons
+
+![Animierte Icons](../images/de/panel_anim.png)
+
+Manche Icons können sich bewegen. Schalte dafür unter dem Icon **„Icon animieren“** ein
+(Wert-, Entitäten- und Timer-Seite, auch im Stapel):
+
+| Icon | an / läuft | aus |
+|---|---|---|
+| **Glühbirne** | leuchtet gelb, Strahlen pulsieren | grau |
+| **Farblicht** | Farben wandern | grau |
+| **Waschmaschine**, **Trockner** | Wäsche dreht sich in der Trommel | steht still |
+| **Spülmaschine** | Sprühstrahl wechselt | steht still |
+| **Ventilator** | Flügel drehen sich | steht still |
+| **Sanduhr** | Sand rieselt | steht still |
+
+Was als **„an“** zählt:
+
+| Einstellung | Bedeutung |
+|---|---|
+| **Zustand von** | leer = der Wert dieser Seite. Sonst eine eigene Entität, z. B. die Steckdose der Waschmaschine oder ihr Status |
+| **Läuft ab** | nur für Zahlen, z. B. Leistung in W: läuft, wenn der Wert **darüber** liegt (z. B. 5). Leer = über 0 |
+| **Gerade** | zeigt, ob das Panel das Gerät gerade als „an / läuft“ sieht |
+
+Als „an“ gelten die Zustände `on`, `open`, `playing`, `running`, `active`, `washing`, `rinsing`, `spinning`,
+`drying`, `cleaning`, `heating`, `cooling` (Groß-/Kleinschreibung egal) – oder eine Zahl über der Schwelle.
+`off`, `unavailable` und alles andere zählen als „aus“.
+
+Auf der **Timer-Seite** gibt es keine Einstellung dafür: Das Icon bewegt sich, solange der Timer läuft,
+und steht bei Pause und bei „FERTIG“ still.
+
+Das Panel rechnet die Animation selbst – auch ohne PC. Die Strombegrenzung zählt jedes Bild mit.
 
 ## Liste
 
@@ -137,14 +172,21 @@ danach ein paar Minuten „FERTIG“ – und verschwindet wieder.
 | **Art des Werts** | *Restzeit* (Zahl oder „1:05:30“ – das Panel zählt selbst sekundengenau herunter), *Endzeit* (Zeitstempel, z. B. „Programmende“ bei Home Connect/Miele), *HA-Timer* (`timer.…`, inkl. Pause) |
 | **Einheit der Zahl** | Sekunden, Minuten oder Stunden (nur bei reinen Zahlen) |
 | **Status** | wie das Panel den Timer gerade sieht |
-| **Beispiel in der Vorschau** | zeigt einen laufenden Beispiel-Timer zum Einstellen – wird nicht übertragen |
+| **Beispiel in der Vorschau** | *Läuft* oder *Fertig* – zeigt einen Beispiel-Timer zum Einstellen, wird nicht übertragen |
 | **Nur wenn der Timer läuft** | sonst ist die Seite ausgeblendet und stört die Rotation nicht (gilt nur für eigene Timer-Seiten, nicht im Stapel) |
 | **Sofort zeigen** | springt beim Start direkt auf diese Seite |
 | **„FERTIG“ anzeigen** | nein, 1, 2, 5, 10 oder 30 min nach dem Ablauf |
 | **Nur diesen Timer zeigen** | solange er läuft, pausieren alle anderen Seiten |
 | **Titel, Icon** | z. B. OFEN mit Backofen-Icon |
+| **Icon animieren** | z. B. Sanduhr oder Waschmaschine bewegen sich, solange der Timer läuft |
 | **Endzeit anzeigen** | „ENDE 12:45“ unter der Restzeit |
 | **Fortschrittsbalken** | füllt sich vom Start bis zum Ende |
+| **Rahmen blinkt, wenn fertig** | solange „FERTIG“ angezeigt wird, blinkt ein Rahmen um die Fläche (0,4 s an / 0,4 s aus) |
+| **Farbe des Rahmens** | Standard Rot |
+
+![Timer fertig mit blinkendem Rahmen](../images/de/panel_fertig.png)
+
+Der Rahmen blinkt nur, solange „FERTIG“ zu sehen ist – stell dafür bei **„FERTIG“ anzeigen** eine Dauer ein.
 
 **Wenn mehrere Timer laufen** (bei „Nur diesen Timer zeigen“): nur den kürzesten zeigen oder **abwechselnd** (alle 5–60 s).
 

@@ -23,7 +23,7 @@ Both versions are the same – only sign-in and upload differ.
 
 1. Install **Python 3.11 or newer** ([python.org](https://www.python.org/downloads/)).
    On Windows tick **“Add python.exe to PATH”** during setup.
-2. Download `PixelPanelStudio_3.1.zip` from the [releases](https://github.com/Bitax/pixelpanel-studio/releases) and unpack it.
+2. Download `PixelPanelStudio_3.2.zip` from the [releases](https://github.com/Bitax/pixelpanel-studio/releases) and unpack it.
 3. Start it:
    - **Windows:** double-click `Start.bat`
    - **Mac/Linux:** open a terminal, change into the folder (`cd` + drag the folder into the window) and type `sh start.sh`

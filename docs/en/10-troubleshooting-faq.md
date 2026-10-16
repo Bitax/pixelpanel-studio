@@ -14,6 +14,7 @@
 | Wrong time | time zone under *Settings → General* (e.g. `Europe/London`) |
 | Values show “–” | entity unavailable in Home Assistant? · panel added in HA (*Settings → Devices & services → ESPHome*)? |
 | Panel runs an old version | banner “The panel is still running version …” → **Apply & upload to panel** once |
+| Animated icon doesn't move | “Animate icon” on? · Does **Right now** say “off”? → set **State from** to the right entity or adjust **Running above** (e.g. 5 W instead of empty) · after switching it on, **Apply & upload to panel** once |
 
 ## Uploading
 

@@ -36,7 +36,8 @@ ein ESP32-S3 ist dafür besser.
 - **Strom pro Modul bei Vollweiß** – leer lassen = Schätzung (ca. 1 mA pro Pixel). Mit dem Wert aus dem Datenblatt wird es genauer.
 
 Der Balken oben zeigt, wie viel Strom für die LEDs übrig bleibt (Netzteil − 10 % Reserve − ESP32 − Grundlast)
-und was ein komplett weißes Bild bräuchte.
+und was ein komplett weißes Bild bräuchte. Balken, Farbe (grün / gelb / rot) und Satz ändern sich sofort,
+während du die Werte eintippst.
 
 **Das Panel rechnet jedes Bild selbst durch** und regelt die Helligkeit nur dann herunter, wenn das Bild
 sonst mehr ziehen würde, als das Netzteil sicher liefert. Text-Seiten bleiben meist bei voller Helligkeit,

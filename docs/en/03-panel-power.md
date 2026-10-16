@@ -34,7 +34,8 @@ More than 128 × 64 pixels on a classic ESP32: colour depth is reduced automatic
 - **Current per module at full white** – empty = estimate (approx. 1 mA per pixel). The datasheet value is more accurate.
 
 The bar at the top shows how much current is left for the LEDs (supply − 10 % reserve − ESP32 − idle load)
-and what a completely white image would need.
+and what a completely white image would need. The bar, its colour (green / yellow / red) and the sentence change
+immediately while you type the values.
 
 **The panel calculates every frame itself** and only lowers the brightness if the image would otherwise draw more
 than the power supply can safely deliver. Text pages usually stay at full brightness, large bright areas get dimmed slightly.

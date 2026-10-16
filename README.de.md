@@ -4,6 +4,8 @@
 Gestalte Seiten für eine LED-Matrix im Browser – Uhr, Wetter, Werte, Listen, Timer, Kalender, Diagramme –
 mit pixelgenauer Live-Vorschau, und spiel sie per ESPHome aufs Panel. *English: [README.md](README.md)*
 
+![PixelPanel Studio in Aktion](docs/images/pixelpanel.gif)
+
 ![Panel-Seiten](docs/images/de/panels.png)
 
 ![Übersicht](docs/images/de/overview.png)
@@ -19,6 +21,7 @@ mit pixelgenauer Live-Vorschau, und spiel sie per ESPHome aufs Panel. *English: 
 - **Strombudget** – das Panel rechnet jedes Bild durch und zieht nie mehr, als dein Netzteil liefert
 - **Mehrere Panels**, beliebige Anordnung und Drehung, viele fertige Boards (ESP32, ESP32-S3, Matrix Portal S3, Apollo M1, Huidu …)
 - **Bebilderte Verkabelungs-Anleitung** passend zu deinem Board
+- **Animierte Icons** – die Glühbirne leuchtet, wenn das Licht an ist, die Trommel der Waschmaschine dreht sich, solange sie läuft, der Timer-Rahmen blinkt bei „FERTIG“
 - **Eigene Icons** (zeichnen oder laden), Community-Icons, Umlaute, € und ° auf dem Panel
 - **Handy & Tablet** mit Anmeldung, Liste der angemeldeten Geräte, alle geöffneten Browser bleiben synchron
 - Oberfläche und Panel-Texte **Deutsch & Englisch**, Hell/Dunkel, „Einfach erklärt“ für Einsteiger
@@ -43,7 +46,7 @@ Kein Token, keine extra Anmeldung – die App läuft in der Seitenleiste von Hom
 ### Weg 2 – PC-Version (Windows, Mac, Linux)
 
 1. **Python 3.11+** installieren ([python.org](https://www.python.org/downloads/); unter Windows „Add python.exe to PATH“ anhaken)
-2. `PixelPanelStudio_3.1.zip` bei den [Releases](https://github.com/Bitax/pixelpanel-studio/releases) laden und entpacken
+2. `PixelPanelStudio_3.2.zip` bei den [Releases](https://github.com/Bitax/pixelpanel-studio/releases) laden und entpacken
 3. `Start.bat` (Windows) bzw. `sh start.sh` (Mac/Linux) starten – der Browser öffnet http://localhost:8765
 4. *Einstellungen → Zugänge & Sicherheit → Home Assistant*: Adresse + langlebiges Zugriffstoken
 

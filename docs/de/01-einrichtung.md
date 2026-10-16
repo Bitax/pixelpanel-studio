@@ -26,7 +26,7 @@ Beide Versionen sind gleich – nur Anmeldung und Übertragung unterscheiden sic
 1. **Python 3.11 oder neuer** installieren ([python.org](https://www.python.org/downloads/)).
    Unter Windows beim Setup **„Add python.exe to PATH“** anhaken.
 2. Bei den [Releases](https://github.com/Bitax/pixelpanel-studio/releases) die Datei
-   `PixelPanelStudio_3.1.zip` herunterladen und entpacken.
+   `PixelPanelStudio_3.2.zip` herunterladen und entpacken.
 3. Starten:
    - **Windows:** `Start.bat` doppelklicken
    - **Mac/Linux:** Terminal öffnen, in den Ordner wechseln (`cd` + Ordner ins Fenster ziehen) und `sh start.sh` eingeben

@@ -84,6 +84,7 @@ One big value – e.g. electricity price, solar power, a price ticker, room temp
 | **Displayed value** | the state or an attribute of the entity |
 | **Title on the panel** | short word above the value, e.g. POWER |
 | **Icon** | small picture next to the title ([chapter 9](09-feedback-icons.md)) |
+| **Animate icon** | only for icons that can move – see [Animated icons](#animated-icons) |
 | **Unit** | empty = unit from Home Assistant |
 | **Decimal places** | Automatic, 0–3 |
 | **Thousands separators** | 1,234 instead of 1234 |
@@ -101,9 +102,42 @@ Exactly one entity, big, with an icon above or below.
 |---|---|
 | **Entity / Displayed value** | as for *Value* |
 | **Icon** and **Position** | icon on top or at the bottom |
+| **Animate icon** | as for *Value* – see [Animated icons](#animated-icons) |
 | **Title (optional)**, **Unit**, **Decimal places** | as for *Value* |
 
 Example water tank: entity = fill level in %, icon = **fill level automatic** – the icon shows empty, half or full depending on the percentage.
+
+### Animated icons
+
+![Animated icons](../images/en/panel_anim.png)
+
+Some icons can move. Switch on **“Animate icon”** below the icon
+(value, entity and timer page, also in a stack):
+
+| Icon | on / running | off |
+|---|---|---|
+| **Light bulb** | glows yellow, rays pulse | grey |
+| **Colour light** | colours cycle | grey |
+| **Washing machine**, **Dryer** | laundry spins in the drum | stands still |
+| **Dishwasher** | spray changes | stands still |
+| **Fan** | blades spin | stands still |
+| **Hourglass** | sand trickles | stands still |
+
+What counts as **“on”**:
+
+| Setting | Meaning |
+|---|---|
+| **State from** | empty = this page's value. Otherwise a separate entity, e.g. the washing machine's smart plug or its status |
+| **Running above** | numbers only, e.g. power in W: running when the value is **above** it (e.g. 5). Empty = above 0 |
+| **Right now** | shows whether the panel currently sees the device as “on / running” |
+
+The states `on`, `open`, `playing`, `running`, `active`, `washing`, `rinsing`, `spinning`, `drying`, `cleaning`,
+`heating`, `cooling` count as “on” (case doesn't matter) – or a number above the threshold.
+`off`, `unavailable` and everything else count as “off”.
+
+On the **timer page** there is nothing to set: the icon moves while the timer runs and stands still when paused and at “DONE”.
+
+The panel runs the animation itself – even without a PC. The power limit counts every frame.
 
 ## List
 
@@ -132,14 +166,21 @@ timer runs, shows the remaining time, “END 12:45” and a progress bar, afterw
 | **Value type** | *Remaining* (number or “1:05:30” – the panel counts down itself to the second), *End time* (timestamp, e.g. “program end” of Home Connect/Miele), *HA timer* (`timer.…`, incl. pause) |
 | **Unit of the number** | seconds, minutes or hours (plain numbers only) |
 | **Status** | how the panel sees the timer right now |
-| **Example in the preview** | shows a running sample timer to adjust the look – not uploaded |
+| **Example in the preview** | *Running* or *Done* – shows a sample timer to adjust the look, not uploaded |
 | **Only while the timer runs** | otherwise the page is hidden and doesn't disturb the rotation (own timer pages only, not in a stack) |
 | **Show immediately** | jumps straight to this page when the timer starts |
 | **Show “DONE”** | no, 1, 2, 5, 10 or 30 min after it ends |
 | **Show only this timer** | while it runs, all other pages pause |
 | **Title, icon** | e.g. OVEN with the oven icon |
+| **Animate icon** | e.g. the hourglass or washing machine moves while the timer runs |
 | **Show end time** | “END 12:45” below the remaining time |
 | **Progress bar** | fills from start to end |
+| **Border flashes when done** | while “DONE” is shown, a border flashes around the area (0.4 s on / 0.4 s off) |
+| **Border colour** | default red |
+
+![Timer done with flashing border](../images/en/panel_fertig.png)
+
+The border only flashes while “DONE” is visible – choose a duration under **Show “DONE”** for that.
 
 **When several timers are running** (with “Show only this timer”): show **only the shortest** or **alternating** (every 5–60 s).
 

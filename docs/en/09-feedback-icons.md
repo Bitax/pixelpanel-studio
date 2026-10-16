@@ -6,13 +6,16 @@ Value, Entity, Timer and Scrolling text pages have an **icon picker** with previ
 
 ![Icon picker](../images/en/icons.png)
 
-- **General** – bolt, thermometer, bulb, house, bitcoin, timer …
+- **General** – bolt, thermometer, bulb, colour light, fan, house, bitcoin, timer …
 - **Weather** – sun, moon, cloud, rain, snow, thunderstorm, wind
-- **Household** – oven, washing machine, dishwasher, 3D printer, fill level empty/half/full and
+- **Household** – oven, washing machine, dryer, dishwasher, 3D printer, fill level empty/half/full and
   **fill level (automatic)** (changes with the percentage)
 - **Media & streaming** – livestream, video, gaming, camera
 - **Vehicles** – saloon, estate, small car, SUV, van, sports car, convertible, pick-up – with a freely chosen **paint colour**
 - **Community icons** – icons suggested by other users (see below)
+
+**Animated:** light bulb, colour light, fan, washing machine, dryer, dishwasher and hourglass can move – switch on
+“Animate icon” on the page ([chapter 4](04-pages.md#animated-icons)). Custom and community icons stay still.
 
 ### Custom icons
 

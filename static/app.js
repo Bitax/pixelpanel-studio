@@ -87,7 +87,7 @@ const S = {
   entities: [], byId: {}, haStatus: "…", haError: "", counts: { devices: 0, areas: 0 },
   seen: null, fresh: new Set(),
   view: "overview",
-  timers: {}, timerDemo: new Set(),
+  timers: {}, timerDemo: new Map(), // key -> "run" | "done" (nur Vorschau)
   rotation: { idx: 0, elapsed: 0 },
   deploy: { running: false, total: 0, lines: [], step: 0, ok: null },
 };
@@ -412,7 +412,8 @@ function iconField(base) {
     const ov = el("div", { class: "overlay", onclick: (e) => e.target === ov && close() },
       el("div", { class: "sheet" },
         el("div", { class: "sheet-head" }, el("h3", {}, "Icon auswählen"),
-          el("div", { style: { color: "var(--text-2)" } }, "Fahrzeuge bekommen danach eine frei wählbare Farbe. „Füllstand automatisch“ wechselt je nach Wert (Prozent) zwischen leer, halb und voll.")),
+          el("div", { style: { color: "var(--text-2)" } }, "Fahrzeuge bekommen danach eine frei wählbare Farbe. „Füllstand automatisch“ wechselt je nach Wert (Prozent) zwischen leer, halb und voll."),
+          el("div", { style: { color: "var(--text-2)", marginTop: "4px" } }, "Licht, Farblicht, Ventilator, Waschmaschine, Trockner, Spülmaschine und Sanduhr können sich bewegen – danach „Icon animieren“ einschalten.")),
         el("div", { class: "sheet-body" },
           el("div", { class: "icon-group" }, el("h4", { class: "group-title" }, "Eigene Icons"),
             el("div", { class: "icon-grid" },
@@ -432,6 +433,52 @@ function iconField(base) {
     document.body.append(ov);
   } }, cur ? iconCanvas(cur, o.icon_color, 1.5) : null, el("span", { class: "t" }, cur ? iconLabel(cur) : "Kein Icon"), el("span", { class: "chev", html: SVG.chev }));
   return btn;
+}
+// ---- 3.2: animierte Icons (Licht an/aus, Waschmaschine läuft …) – nur für eingebaute Icons aus S.boot.iconAnim
+const ANIM_TXT = {
+  bulb: "Leuchtet gelb mit Strahlen, wenn das Licht an ist – sonst grau",
+  colorbulb: "Farben wandern, wenn das Licht an ist – sonst grau",
+  washer: "Die Wäsche dreht sich in der Trommel, solange sie läuft",
+  dryer: "Die Wäsche dreht sich in der Trommel, solange er läuft",
+  dishwasher: "Der Sprühstrahl wechselt, solange sie läuft",
+  fan: "Die Flügel drehen sich, solange er an ist",
+  timer: "Ein Sandkorn fällt, solange es läuft",
+};
+const canAnim = (icon) => !!(icon && S.boot.iconAnim && S.boot.iconAnim[icon]);
+function animRows(base, type) {
+  const o = getPath(S.draft, base);
+  if (!canAnim(o.icon)) return [];
+  const rows = [row("Icon animieren", toggle(`${base}.icon_anim`, () => render()),
+    type === "timer" ? "Bewegt sich, solange der Timer läuft – bei Pause und „FERTIG“ steht es still" : ANIM_TXT[o.icon])];
+  if (type === "timer" || !o.icon_anim) return rows;
+  const raw = o.anim_entity ? haStr(o.anim_entity) : o.entity ? haStr(o.entity, (o.attribute || "").trim() || undefined) : "";
+  const on = S.R.isAct(raw, S.R.animThr(o));
+  rows.push(
+    row("Zustand von", entityButton(`${base}.anim_entity`, null, { optional: true, placeholder: "Angezeigter Wert" }),
+      "Leer = der Wert dieser Seite. Sonst z. B. die Steckdose oder der Status der Waschmaschine"),
+    row("Läuft ab", el("span", { class: "dur" }, el("input", { class: "field", type: "text", inputmode: "decimal", placeholder: "z. B. 5",
+      value: o.anim_above ?? "", autocomplete: "off", spellcheck: false, style: { width: "90px" },
+      oninput: (ev) => {
+        const v = ev.target.value.replace(/[^0-9.,\-]/g, "").slice(0, 12);
+        if (v !== ev.target.value) ev.target.value = v;
+        change(`${base}.anim_above`, v); renderPanels(); refreshAnimState();
+      } })),
+      "Nur für Zahlen, z. B. Leistung in W: läuft, wenn der Wert darüber liegt. Leer = über 0"),
+    el("div", { class: "row" }, el("div", { class: "label" }, "Gerade",
+      el("small", {}, "„an“ zählt bei: on, open, playing, running, active, washing, drying … oder eine Zahl über der Schwelle")),
+    el("span", { class: "state anim-state" + (on ? " on" : ""), "data-anim": base }, raw === "" ? "–" : on ? "an / läuft" : "aus")));
+  return rows;
+}
+// „Gerade an / aus“ neu setzen, ohne das Eingabefeld neu aufzubauen
+function refreshAnimState() {
+  document.querySelectorAll("[data-anim]").forEach((n) => {
+    const o = getPath(S.draft, n.dataset.anim);
+    if (!o) return;
+    const raw = o.anim_entity ? haStr(o.anim_entity) : o.entity ? haStr(o.entity, (o.attribute || "").trim() || undefined) : "";
+    const on = S.R.isAct(raw, S.R.animThr(o));
+    n.textContent = raw === "" ? "–" : on ? "an / läuft" : "aus";
+    n.classList.toggle("on", on);
+  });
 }
 function iconRows(base) {
   const o = getPath(S.draft, base);
@@ -501,7 +548,7 @@ function tickTimers(now) {
 function timerView() {
   const out = Object.assign({}, S.timers);
   const t = Math.floor(Date.now() / 1000);
-  for (const k of S.timerDemo) out[k] = { rem: 754 - (t % 754), max: 1800, done: 0, pz: false };
+  for (const [k, v] of S.timerDemo) out[k] = v === "done" ? { rem: 0, max: 1800, done: (Date.now() - 5000) >>> 0, pz: false } : { rem: 754 - (t % 754), max: 1800, done: 0, pz: false };
   return out;
 }
 const timerText = (m) => {
@@ -1338,16 +1385,15 @@ function timerGroups(base, area, { key, isPage }) {
     timer: "Ein Timer-Helfer aus Home Assistant (timer.…) – mit Pause und Gesamtdauer",
   };
   const m = S.timers[key];
-  const demo = S.timerDemo.has(key);
+  const demo = S.timerDemo.get(key) || "";
   const src = [
     row("Entität", pickBtn, e ? `Gerade: ${fmtState(e)}` : "Restzeit, Endzeit oder Timer-Helfer"),
     row("Art des Werts", seg(`${base}.mode`, [["remaining", "Restzeit"], ["end", "Endzeit"], ["timer", "HA-Timer"]]), MODE_SUB[o.mode] || MODE_SUB.remaining),
     o.mode === "remaining" && row("Einheit der Zahl", seg(`${base}.unit`, [["s", "Sekunden"], ["min", "Minuten"], ["h", "Stunden"]]), "Nur für reine Zahlen; „1:05:30“ wird automatisch erkannt"),
     row("Status", el("span", { class: "tstat" + (m && m.rem > 0 ? " on" : ""), "data-tkey": o.entity ? key : null }, o.entity ? timerText(m) : "–"), "So sieht das Panel den Timer gerade"),
-    row("Beispiel in der Vorschau", (() => {
-      const inp = el("input", { type: "checkbox", checked: demo, onchange: (ev) => { if (ev.target.checked) S.timerDemo.add(key); else S.timerDemo.delete(key); resetRotation(); render(); } });
-      return el("label", { class: "switch" }, inp, el("span"));
-    })(), "Zeigt einen laufenden Beispiel-Timer, damit du das Aussehen einstellen kannst – wird nicht übertragen"),
+    row("Beispiel in der Vorschau", el("div", { class: "seg" }, [["", "Aus"], ["run", "Läuft"], ["done", "Fertig"]].map(([v, l]) =>
+      el("button", { class: v === demo ? "on" : "", onclick: () => { if (v) S.timerDemo.set(key, v); else S.timerDemo.delete(key); resetRotation(); render(); } }, l))),
+    "Zeigt einen laufenden oder fertigen Beispiel-Timer, damit du das Aussehen einstellen kannst – wird nicht übertragen"),
   ];
   const groups = [versionBanner(), group("Datenquelle", src, "Tipp: Bei Geräten, die die Restzeit auch im Leerlauf anzeigen, zusätzlich eine Bedingung setzen (z. B. Zustand = run).")];
   if (isPage) {
@@ -1421,8 +1467,13 @@ function optionGroupsFor(type, base, area, ctx, tf) {
       group("Darstellung", [
         row("Titel auf dem Panel", textField(`${base}.title`, { wide: false, placeholder: "z. B. OFEN", transform: (v) => v.slice(0, 60), after: tf.upd })),
         ...iconRows(base),
+        ...animRows(base, "timer"),
         row("Endzeit anzeigen", toggle(`${base}.show_end`, () => renderPanels()), "„ENDE 12:45“ unter der Restzeit"),
         row("Fortschrittsbalken", toggle(`${base}.show_bar`, () => renderPanels()), "Füllt sich vom Start bis zum Ende"),
+        row("Rahmen blinkt, wenn fertig", toggle(`${base}.done_blink`, () => render()),
+          String(o.done_minutes ?? 2) === "0" ? "Wirkt nur, wenn „FERTIG“ angezeigt wird (oben bei „„FERTIG“ anzeigen“ eine Dauer wählen)"
+            : "Solange „FERTIG“ angezeigt wird, blinkt ein Rahmen um die Fläche"),
+        o.done_blink && row("Farbe des Rahmens", colorField(`${base}.blink_color`), "Standard: Rot"),
       ]), colors];
   }
   const colors = group("Farben", [row("Hauptfarbe", colorField(`${base}.color`)), row("Akzentfarbe", colorField(`${base}.accent`))]);
@@ -1553,6 +1604,7 @@ function optionGroupsFor(type, base, area, ctx, tf) {
       group("Icon", [
         ...iconRows(base),
         row("Position", seg(`${base}.icon_pos`, [["top", "Oben"], ["bottom", "Unten"]]), "Icon über oder unter dem Wert"),
+        ...animRows(base, type),
       ], "„Füllstand automatisch“ zeigt leer, halb oder voll – passend zum Prozentwert."),
       group("Größe & Platzierung", [...sizeRows(type, base, area, { icon: !!o.icon, key: ctx.key }), placeRow(base, { type, area, key: ctx.key })]),
       group("Darstellung", [
@@ -1574,6 +1626,7 @@ function optionGroupsFor(type, base, area, ctx, tf) {
       group("Darstellung", [
         titleRow,
         ...iconRows(base),
+        ...animRows(base, type),
         row("Einheit", textField(`${base}.unit`, { wide: false, placeholder: e && !o.attribute ? (e.unit || "keine") : "keine" }), "Leer = Einheit aus Home Assistant"),
         row("Nachkommastellen", selectField(`${base}.decimals`, [[-1, "Automatisch"], [0, "0"], [1, "1"], [2, "2"], [3, "3"]])),
         row("Tausenderpunkte", toggle(`${base}.thousands`), "1.234 statt 1234"),
@@ -2400,9 +2453,11 @@ function refreshPower() {
     const old = document.getElementById("power-group");
     if (!old) return;
     const fresh = powerGroup();
-    const tbl = fresh.querySelector(".power-rows"), foot = fresh.querySelector(".group-foot");
-    old.querySelector(".power-rows").replaceWith(tbl);
-    old.querySelector(".group-foot").replaceWith(foot);
+    // Zusammenfassung (Satz, Balken, Farbe), Tabelle und Fußtext ersetzen – die Eingabefelder bleiben
+    for (const sel of [".psu-summary", ".power-rows", ".group-foot"]) {
+      const o = old.querySelector(sel), n = fresh.querySelector(sel);
+      if (o && n) o.replaceWith(n);
+    }
     renderPanels();
   }, 150);
 }
@@ -2418,7 +2473,7 @@ function powerGroup() {
       el("span", { class: "state" + (pct < 100 ? " warn" : " on") }, pct < 100 ? `max. ${pct} %` : "100 %"));
   });
   const ok = budget >= fullWhite;
-  const summary = el("div", { class: "row", style: { display: "block", padding: "12px 14px" } },
+  const summary = el("div", { class: "row psu-summary", style: { display: "block", padding: "12px 14px" } },
     el("div", { class: "psu-sum " + (ok ? "ok" : whitePct >= 40 ? "warn" : "bad") },
       el("b", {}, ok ? "Dein Netzteil reicht für alles – auch für komplett weiße Bilder."
         : whitePct >= 40 ? "Dein Netzteil reicht für Texte und Uhren in voller Helligkeit. Große helle Flächen dimmt das Panel automatisch."
@@ -2429,7 +2484,7 @@ function powerGroup() {
     summary,
     row("Netzteil", el("span", { class: "dur" },
       el("input", { class: "field", type: "number", min: 3, max: 24, step: 0.1, value: pw.volt, style: { width: "64px" },
-        oninput: (e) => change("settings.power.volt", +e.target.value), onchange: () => refreshPower() }), "V",
+        oninput: (e) => { change("settings.power.volt", +e.target.value); refreshPower(); } }), "V",
       el("input", { class: "field", type: "number", min: 0.5, max: 60, step: 0.5, value: pw.amp, style: { width: "64px" },
         oninput: (e) => { change("settings.power.amp", +e.target.value); refreshPower(); } }), "A"),
     "Was auf deinem Netzteil steht, z. B. 5 V / 3 A"),
@@ -2646,7 +2701,7 @@ function connectEvents() {
   connectEvents();
   resetRotation();
   setInterval(() => {
-    tickRotation(); renderPanels();
+    tickRotation(); renderPanels(); refreshAnimState();
     document.querySelectorAll("[data-tkey]").forEach((n) => {
       const m = S.timers[n.dataset.tkey];
       n.textContent = timerText(m); n.classList.toggle("on", !!(m && m.rem > 0));

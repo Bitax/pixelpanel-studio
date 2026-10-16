@@ -35,7 +35,7 @@ from paneltext import PANEL_TEXT
 from version import VERSION, GITHUB_REPO, GITHUB_BRANCH
 import geometry
 import pixelfont
-from icons import ICON_CHOICES, ICON_GROUPS, ICONS, PALETTE, WEATHER
+from icons import ICON_CHOICES, ICON_GROUPS, ICONS, PALETTE, WEATHER, ANIM, ACTIVE_STATES
 
 ROOT = Path(__file__).parent
 # Home-Assistant-App: läuft im Supervisor (Token kommt automatisch, Daten liegen in /data)
@@ -106,9 +106,11 @@ PAGE_TEMPLATES = {
     "weather": {"name": "Wetter", "duration": 30, "options": DEFAULT_CONFIG["pages"][1]["options"]},
     "value": {"name": "Wert", "duration": 20, "options": {
         "entity": "", "attribute": "", "title": "", "icon": "", "unit": "", "decimals": -1,
-        "thousands": True, "second_entity": "", "trend": False, "icon_color": "#0a84ff", "scale": 0, "icon_scale": 0, "valign": 1, "halign": 1, "color": "#ffffff", "accent": "#bf5af2"}},
+        "thousands": True, "second_entity": "", "trend": False, "icon_color": "#0a84ff",
+        "icon_anim": False, "anim_entity": "", "anim_above": "", "scale": 0, "icon_scale": 0, "valign": 1, "halign": 1, "color": "#ffffff", "accent": "#bf5af2"}},
     "entity": {"name": "Entität", "duration": 20, "options": {
         "entity": "", "attribute": "", "title": "", "icon": "water_auto", "icon_color": "#0a84ff", "icon_pos": "top",
+        "icon_anim": False, "anim_entity": "", "anim_above": "",
         "unit": "", "decimals": -1, "thousands": True, "scale": 0, "icon_scale": 0, "valign": 1, "halign": 1,
         "color": "#ffffff", "accent": "#64d2ff"}},
     "list": {"name": "Liste", "duration": 20, "options": {
@@ -116,6 +118,7 @@ PAGE_TEMPLATES = {
     "timer": {"name": "Timer", "duration": 20, "options": {
         "entity": "", "mode": "remaining", "unit": "min", "title": "", "icon": "timer", "show_end": True, "show_bar": True,
         "only_running": True, "interrupt": True, "exclusive": False, "done_minutes": 2, "icon_color": "#0a84ff",
+        "icon_anim": False, "done_blink": False, "blink_color": "#ff453a",
         "scale": 0, "icon_scale": 0, "valign": 1, "halign": 1, "color": "#ffffff", "accent": "#ff9f0a"}},
     "marquee": {"name": "Laufschrift", "duration": 20, "options": {
         "source": "text", "text": "", "entity": "", "attribute": "", "prefix": "", "title": "", "always": True,
@@ -1073,7 +1076,7 @@ async def bootstrap():
                 "chips": geometry.CHIPS, "animCost": geometry.ANIM_COST, "bppb": geometry.BYTES_PER_PX_BIT,
                 "entKb": geometry.ENT_KB},
         "iconGroups": ICON_GROUPS, "panelText": PANEL_TEXT,
-        "icons": ICONS, "palette": PALETTE, "weather": WEATHER,
+        "icons": ICONS, "palette": PALETTE, "weather": WEATHER, "iconAnim": ANIM, "activeStates": ACTIVE_STATES,
         "stateWords": yaml_gen.STATE_WORDS,
         "font": {"height": pixelfont.HEIGHT, "glyphs": pixelfont.GLYPHS, "mini": pixelfont.MINI, "miniHeight": pixelfont.MINI_HEIGHT},
         "esphomeInstalled": importlib.util.find_spec("esphome") is not None,

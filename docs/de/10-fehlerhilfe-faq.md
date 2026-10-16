@@ -14,6 +14,7 @@
 | Uhrzeit falsch | Zeitzone unter *Einstellungen → Allgemein* (z. B. `Europe/Berlin`) |
 | Werte zeigen „–“ | Entität in Home Assistant nicht verfügbar? · Panel in HA eingebunden (*Einstellungen → Geräte & Dienste → ESPHome*)? |
 | Panel zeigt alte Version | Banner „Auf dem Panel läuft noch Version …“ → einmal **Übernehmen & aufs Panel** |
+| Animiertes Icon bewegt sich nicht | „Icon animieren“ an? · Zeile **Gerade** zeigt „aus“? → **Zustand von** auf die richtige Entität stellen oder **Läuft ab** anpassen (z. B. 5 W statt leer) · nach dem Einschalten einmal **Übernehmen & aufs Panel** |
 
 ## Übertragen
 

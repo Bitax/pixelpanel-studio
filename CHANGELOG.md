@@ -2,6 +2,19 @@
 
 All notable changes to PixelPanel Studio. *Deutsch weiter unten.*
 
+## 3.2 – animated icons
+
+### New
+- **Animated icons** – switch on “Animate icon” for value, entity and timer pages: the light bulb glows with rays when the light is on (grey when off), the colour light cycles its colours, the drum of the washing machine and dryer turns, the dishwasher sprays, the fan spins and the hourglass trickles while the timer runs
+- Decide what counts as “on”: optionally a separate entity (e.g. the smart plug) and a threshold “Running above” for power sensors (e.g. 5 W)
+- **Timer page: border flashes when done** – optional, in a colour of your choice (default red), as long as “DONE” is shown
+- New icons: **dryer** and **fan**
+- Timer example in the preview can now also show “finished”
+- Animated GIF at the top of the README
+
+### Fixed
+- Settings → Panel & hardware → Power supply: the bar, its colour and the sentence now update immediately while you type the amps (before only after e.g. choosing another ESP)
+
 ## 3.1 – first public release
 
 ### New
@@ -30,6 +43,16 @@ Internal test versions (not published).
 ---
 
 ## Deutsch
+
+### 3.2 – animierte Icons
+
+- **Animierte Icons** – „Icon animieren“ für Wert-, Entitäten- und Timer-Seiten: Die Glühbirne leuchtet mit Strahlen, wenn das Licht an ist (aus = grau), das Farblicht wechselt die Farben, die Trommel von Waschmaschine und Trockner dreht sich, die Spülmaschine sprüht, der Ventilator dreht sich und die Sanduhr rieselt, solange der Timer läuft
+- Einstellbar, was als „an“ zählt: auf Wunsch eine eigene Entität (z. B. die Steckdose) und „Läuft ab“ für Leistungs-Sensoren (z. B. 5 W)
+- **Timer-Seite: Rahmen blinkt, wenn fertig** – optional, Farbe wählbar (Standard Rot), solange „FERTIG“ angezeigt wird
+- Neue Icons: **Trockner** und **Ventilator**
+- Das Timer-Beispiel in der Vorschau kann jetzt auch „fertig“ zeigen
+- Animiertes GIF oben in der README
+- **Behoben:** Einstellungen → Panel & Hardware → Stromversorgung – Balken, Farbe und Satz aktualisieren sich jetzt sofort beim Eintippen der Ampere (vorher erst z. B. nach dem Wechsel des ESP)
 
 ### 3.1 – erste öffentliche Version
 

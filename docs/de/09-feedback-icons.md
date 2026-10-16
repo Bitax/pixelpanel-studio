@@ -6,13 +6,17 @@ Wert-, Entität-, Timer- und Laufschrift-Seiten haben eine **Icon-Auswahl** mit 
 
 ![Icon-Auswahl](../images/de/icons.png)
 
-- **Allgemein** – Blitz, Thermometer, Glühbirne, Haus, Bitcoin, Timer …
+- **Allgemein** – Blitz, Thermometer, Glühbirne, Farblicht, Ventilator, Haus, Bitcoin, Timer …
 - **Wetter** – Sonne, Mond, Wolke, Regen, Schnee, Gewitter, Wind
-- **Haushalt** – Backofen, Waschmaschine, Spülmaschine, 3D-Drucker, Füllstand leer/halb/voll und
+- **Haushalt** – Backofen, Waschmaschine, Trockner, Spülmaschine, 3D-Drucker, Füllstand leer/halb/voll und
   **Füllstand automatisch** (wechselt nach Prozentwert)
 - **Medien & Streaming** – Livestream, Video, Gaming, Kamera
 - **Fahrzeuge** – Limousine, Kombi, Kleinwagen, SUV, Kastenwagen, Sportwagen, Cabrio, Pick-up – mit frei wählbarer **Lackfarbe**
 - **Community-Icons** – Icons, die andere Nutzer vorgeschlagen haben (siehe unten)
+
+**Animiert:** Glühbirne, Farblicht, Ventilator, Waschmaschine, Trockner, Spülmaschine und Sanduhr können
+sich bewegen – „Icon animieren“ auf der Seite einschalten ([Kapitel 4](04-seiten.md#animierte-icons)).
+Eigene und Community-Icons bleiben unbewegt.
 
 ### Eigene Icons
 
