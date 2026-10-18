@@ -1,0 +1,22 @@
+{
+ "de": {
+  "title": "Handbuch",
+  "toc": "Inhalt",
+  "tagline": "LED-Panel-Dashboard für Home Assistant (ESP32 + HUB75)",
+  "byline": "by Bitax",
+  "note": "Alle Bilder stammen aus dem Demo-Modus mit Beispieldaten.",
+  "repo": "github.com/Bitax/pixelpanel-studio · GPL-3.0",
+  "page": "Seite",
+  "file": "PixelPanel_Handbuch_DE_{version}.pdf"
+ },
+ "en": {
+  "title": "Manual",
+  "toc": "Contents",
+  "tagline": "LED panel dashboard for Home Assistant (ESP32 + HUB75)",
+  "byline": "by Bitax",
+  "note": "All pictures were taken in demo mode with sample data.",
+  "repo": "github.com/Bitax/pixelpanel-studio · GPL-3.0",
+  "page": "Page",
+  "file": "PixelPanel_Manual_EN_{version}.pdf"
+ }
+}
