@@ -2,6 +2,14 @@
 
 All notable changes to PixelPanel Studio. *Deutsch weiter unten.*
 
+## 3.3 – calendar fix and update screen
+
+### Fixed
+- **Calendar: all-day events** are recognised on the panel again. Home Assistant sends “all day” to the panel as `on` (the preview sees `true`), so the panel showed a time like 00:00 and cut the title short – now panel and preview match again
+
+### New
+- **Update screen:** while a new version is uploaded over Wi-Fi, the panel only shows **UPDATE**, a progress bar and the percentage, redrawn once per second. This takes load off the ESP32 while it writes the firmware. If the upload fails, the panel returns to normal; afterwards it restarts as usual
+
 ## 3.2.1 – works with the new ESPHome Device Builder
 
 ### Fixed
@@ -54,6 +62,11 @@ Internal test versions (not published).
 ---
 
 ## Deutsch
+
+### 3.3 – Kalender-Korrektur und Update-Bildschirm
+
+- **Behoben: Kalender – ganztägige Termine** werden auf dem Panel wieder erkannt. Home Assistant schickt „ganztägig“ ans Panel als `on` (die Vorschau sieht `true`), deshalb stand auf dem Panel eine Uhrzeit wie 00:00 und der Titel wurde abgeschnitten – jetzt zeigen Panel und Vorschau wieder dasselbe
+- **Neu: Update-Bildschirm** – während eine neue Version per WLAN übertragen wird, zeigt das Panel nur **UPDATE**, einen Fortschrittsbalken und die Prozentzahl, einmal pro Sekunde neu gezeichnet. Das entlastet den ESP32 beim Schreiben der Firmware. Klappt das Übertragen nicht, kehrt das Panel zur normalen Anzeige zurück; danach startet es wie gewohnt neu
 
 ### 3.2.1 – passt zum neuen ESPHome Device Builder
 

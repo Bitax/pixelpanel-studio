@@ -1060,7 +1060,9 @@
         } else {
           for (const c of (o.calendars || []).filter((c) => c && c.entity).slice(0, 4)) {
             const a = attrStr(st, c.entity, "all_day");
-            const e = pev(attrStr(st, c.entity, "start_time"), !!a && (a[0] === "T" || a[0] === "t"));
+            // ganztägig: „true“ (Vorschau) oder „on“ (so schickt Home Assistant es ans Panel)
+            const al = String(a || "").toLowerCase();
+            const e = pev(attrStr(st, c.entity, "start_time"), al.startsWith("t") || al.startsWith("on"));
             if (!e) continue;
             pend(attrStr(st, c.entity, "end_time"), e);
             e.t = ascRT(attrStr(st, c.entity, "message")); e.c = hex(c.color || o.accent);

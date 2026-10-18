@@ -625,6 +625,49 @@ py = yy;
 PRELUDE = PRELUDE.replace("@ACTIVE@", ", ".join(cstr(w) for w in ACTIVE_STATES))
 
 
+def ota_screen_cpp(W, H, done):
+    """3.3: Ruhiger Bildschirm, solange ein Update per WLAN läuft – „UPDATE“, Balken, Prozent.
+    Die Anzeige wird dabei nur einmal pro Sekunde neu gezeichnet (siehe ota_yaml)."""
+    return f"""// Update läuft: nur „UPDATE“, Fortschrittsbalken und Prozent – entlastet den ESP beim Schreiben der Firmware
+OX = 0; OY = 0; DW = {W}; DH = {H}; GX0 = 0; GY0 = 0; GX1 = {W}; GY1 = {H}; AL = 255;
+int q = (tw("UPDATE", 8) <= {W} - 4 && {H} >= 48) ? 8 : (tw("UPDATE", 4) <= {W} - 2 ? 4 : 3);
+int lh = TH(q), m = std::max(2, {W} / 16), bw = {W} - 2 * m, bh = q >= 8 ? 7 : 5, sp = q >= 8 ? 5 : 3;
+int y = ({H} - (2 * lh + bh + 2 * sp)) / 2;
+tx({W} / 2, y, q, Color(0, 150, 255), 1, "UPDATE");
+y += lh + sp;
+int pc = std::max(0, std::min(100, id(ota_pct)));
+RC(m, y, bw, bh, Color(90, 90, 96));
+int fw = (bw - 2) * pc / 100;
+if (fw > 0) FR(m + 1, y + 1, fw, bh - 2, Color(48, 209, 88));
+y += bh + sp;
+char pb[16];
+if (id(ota_st) == 2) snprintf(pb, sizeof(pb), "%s", {cstr(done)}); else snprintf(pb, sizeof(pb), "%d%%", pc);
+tx({W} / 2, y, q, Color(200, 200, 200), 1, pb);"""
+
+
+def ota_yaml(ota_pw, interval):
+    """OTA mit Update-Bildschirm: beim Start auf 1 Bild/s drosseln, bei Fehler zurück zum normalen Takt."""
+    return f"""ota:
+  - platform: esphome
+""" + (f"    password: {cstr(ota_pw)}\n" if ota_pw else "") + f"""    on_begin:
+      - lambda: 'id(ota_st) = 1; id(ota_pct) = 0;'
+      - component.resume:
+          id: matrix
+          update_interval: 1s
+      - component.update: matrix
+    on_progress:
+      - lambda: 'id(ota_pct) = (int) x;'
+    on_end:
+      - lambda: 'id(ota_st) = 2; id(ota_pct) = 100;'
+      - component.update: matrix
+    on_error:
+      - lambda: 'id(ota_st) = 0; id(ota_pct) = 0;'
+      - component.resume:
+          id: matrix
+          update_interval: {interval}ms
+"""
+
+
 def prelude_for(lang):
     """PRELUDE mit den Zustandswörtern (an/aus …) in der Panel-Sprache."""
     if lang == "de":
@@ -1384,7 +1427,9 @@ def page_calendar(p, cx, pid):
             en = cx.sensor(f"{pid}_x{k}", c["entity"], "end_time")
             ad = cx.sensor(f"{pid}_a{k}", c["entity"], "all_day")
             code += f"""{{ std::string a = {ad};
-    if (pev({st}, !a.empty() && (a[0] == 'T' || a[0] == 't'), e)) {{ pend({en}, e); e.t = asc({m}); e.c = {color(c.get('color') or o.get('accent'))}; if (keep(e.t)) E.push_back(e); }} }}
+    // ganztägig? Home Assistant schickt Ja/Nein-Attribute ans Panel als „on“/„off“ (die Vorschau sieht „true“)
+    bool ad = !a.empty() && (a[0] == 'T' || a[0] == 't' || ((a[0] == 'o' || a[0] == 'O') && a.size() > 1 && (a[1] == 'n' || a[1] == 'N')));
+    if (pev({st}, ad, e)) {{ pend({en}, e); e.t = asc({m}); e.c = {color(c.get('color') or o.get('accent'))}; if (keep(e.t)) E.push_back(e); }} }}
     """
     # vorbei? weg. Laufende mehrtägige Termine zählen ab heute. Sortieren, doppelte (gleicher Titel, Tag, Zeit) weg.
     code += """
@@ -1963,7 +2008,6 @@ logger:
         raise GenError("Der API-Schlüssel ist ungültig (32 Byte, Base64) – unter Zugänge & Sicherheit auf „Neu“ klicken.")
     out.append("api:\n" + (f'  encryption:\n    key: "{api_key}"\n' if api_key else ""))
     ota_pw = (s.get("ota_password") or "").strip()
-    out.append("ota:\n  - platform: esphome\n" + (f"    password: {cstr(ota_pw)}\n" if ota_pw else ""))
 
     ap_pw = str(s.get("ap_password") or "")
     if len(ap_pw) < 8 or not re.fullmatch(r"[A-Za-z0-9]{8,63}", ap_pw):
@@ -2087,6 +2131,12 @@ globals:
     initial_value: '0'
   - id: vis_mask
     type: uint32_t
+    initial_value: '0'
+  - id: ota_st
+    type: int
+    initial_value: '0'
+  - id: ota_pct
+    type: int
     initial_value: '0'
 """ + "".join(f"""  - id: {t}_rem
     type: int
@@ -2240,7 +2290,11 @@ id(vis_mask) = m;
 auto draw_mask = [&](uint32_t mask) {{
 {chr(10).join(draws)}
 }};
+if (id(ota_st) != 0) {{
+{ota_screen_cpp(g.W, g.H, PANEL_TEXT[cx.lang]["done"])}
+}} else {{
 {transition_cpp(an, g.W, g.H)}
+}}
 // Strombegrenzung: Farbsumme -> geschätzter Strom -> höchste sichere Helligkeit
 const double I_PX = {pw['i_px']!r};
 const double IDLE = {pw['idle']!r};
@@ -2272,6 +2326,7 @@ if (cur != applied) {{ applied = cur; id(matrix).set_brightness(cur); }}
     smooth = an["style"] != "none"
     # Animationen: 30 Bilder/s (bei hoher Last weniger), zweiter Bildpuffer gegen Flackern, wo der Speicher reicht
     dbl = "    double_buffer: true\n" if plan["double"] else ""
+    interval = plan["interval"] if smooth or not sc_on else min(plan["interval"], 50 if total <= 8192 else 66)
     out.append(f"""display:
   - platform: hub75
     id: matrix
@@ -2280,8 +2335,9 @@ if (cur != applied) {{ applied = cur; id(matrix).set_brightness(cur); }}
 {multi}{rot_yaml}{pin_yaml}
     shift_driver: {drv}
 {bits}{dbl}    brightness: 0
-    update_interval: {plan["interval"] if smooth or not sc_on else min(plan["interval"], 50 if total <= 8192 else 66)}ms
+    update_interval: {interval}ms
     lambda: |-
 {ind(render, 6)}
 """)
+    out.append(ota_yaml(ota_pw, interval))
     return "\n".join(out)

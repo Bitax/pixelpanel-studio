@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.3
+
+- **Calendar:** all-day events are recognised on the panel again (no more “00:00” and cut-off titles)
+- **Update screen:** while uploading over Wi-Fi the panel only shows UPDATE, a progress bar and the percentage – less load on the ESP32
+
 ## 3.2.1
 
 - Works with the new **ESPHome Device Builder** (ESPHome 2026.6+)
@@ -35,6 +40,11 @@
 ---
 
 ## Deutsch
+
+### 3.3
+
+- **Kalender:** Ganztägige Termine werden auf dem Panel wieder erkannt (kein „00:00“ und kein abgeschnittener Titel mehr)
+- **Update-Bildschirm:** Beim Übertragen per WLAN zeigt das Panel nur UPDATE, einen Fortschrittsbalken und die Prozentzahl – weniger Last für den ESP32
 
 ### 3.2 – animierte Icons
 

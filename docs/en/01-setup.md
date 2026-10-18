@@ -110,6 +110,8 @@ The Device Builder is then reachable on your Wi-Fi without a password. Only use 
 
 From then on every update goes over Wi-Fi. The first compile takes several minutes, later ones are much faster.
 
+While an update runs over Wi-Fi, the panel only shows **UPDATE**, a progress bar and the percentage. Afterwards it restarts and shows your pages again. If the upload is interrupted, it returns to the normal display – just upload again.
+
 The first time, Home Assistant reports a **new device** – click *Configure*. If HA asks for the
 **encryption key**: it is under *Access & security → Security → API key*.
 
