@@ -13,12 +13,25 @@ Nachts muss das Panel nicht leuchten. Für **jede Nacht** einzeln:
 | **Ruhezeit** (Schalter) | schaltet die Ruhezeit insgesamt an/aus |
 | **Mo → Di …** | die Nacht von Montag auf Dienstag usw., jede mit eigenem Haken |
 | **Von / Bis** | z. B. 23:00 bis 06:30. Ein Beginn vor 12 Uhr zählt als nach Mitternacht (z. B. 00:30) |
-| **Aus / Gedimmt** | ganz aus oder nur schwach leuchtend |
+| **Aus / Gedimmt / Nacht** | ganz aus, nur schwach leuchtend oder **Nacht**: schwach leuchtend und alles in Rot (siehe unten) |
 | **Montag für alle übernehmen** | kopiert die Zeiten von Montag auf alle Nächte |
-| **Helligkeit gedimmt** | wie hell das Panel in Nächten mit „Gedimmt“ ist (Prozent) |
-| **Sichtbar, wenn gedimmt** | welche Seiten in der gedimmten Ruhezeit weiterlaufen – nachts reicht oft die Uhr |
+| **Helligkeit gedimmt & Nacht** | wie hell das Panel in Nächten mit „Gedimmt“ oder „Nacht“ ist (Prozent) – nachts reichen oft 3–5 % |
+| **Sichtbar, wenn gedimmt oder Nacht** | welche Seiten in diesen Nächten weiterlaufen – nachts reicht oft die Uhr |
 
-Der Balken unter jeder Nacht zeigt 12 Uhr mittags bis 12 Uhr am nächsten Tag: normal, Abenddimmung, aus/gedimmt.
+Der Balken unter jeder Nacht zeigt 12 Uhr mittags bis 12 Uhr am nächsten Tag: normal, Abenddimmung, aus, gedimmt oder Nacht (rot).
+
+## Nachtmodus
+
+Rotes Licht blendet nachts viel weniger als weißes oder blaues. Im **Nachtmodus** ist das Panel gedimmt und zeigt **alles in Rot** – Uhr, Wetter, Icons. Jede Farbe wird dabei zu Rot in derselben Helligkeit, die Anzeige bleibt also gut lesbar.
+
+Es gibt zwei Wege:
+
+- **Zu festen Zeiten:** in der Ruhezeit bei einer Nacht **„Nacht“** wählen. Es gelten *Helligkeit gedimmt & Nacht* und *Sichtbar, wenn gedimmt oder Nacht*.
+- **Per Schalter:** In Home Assistant hat das Panel den Schalter **„Nachtmodus“** – unabhängig von den Uhrzeiten, z. B. per Automation, wenn im Schlafzimmer das Licht ausgeht. Dabei laufen alle Seiten weiter wie gewohnt, nur gedimmt und in Rot. Steht die Ruhezeit gerade auf „Aus“, bleibt das Panel trotzdem dunkel.
+
+**Nacht ansehen** (*Einstellungen → Allgemein → Nachtmodus*) zeigt dir in der Vorschau, wie das Panel nachts aussieht – am Panel selbst ändert sich dadurch nichts.
+
+> **Tipp.** Ganz unten (1 %) können feine Linien auf dem Panel verschwinden. Probier aus, was bei dir gerade noch gut lesbar ist.
 
 ## Abenddimmung
 

@@ -1,5 +1,5 @@
 name: PixelPanel Studio
-version: "3.4"
+version: "3.5"
 slug: pixelpanel_studio
 description: Design pages for an ESP32 HUB75 LED panel and push them via ESPHome.
 url: https://github.com/Bitax/pixelpanel-studio

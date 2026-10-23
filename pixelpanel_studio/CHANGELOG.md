@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.5 – night mode
+
+- **Night mode:** quiet hours can now be “Night” – dimmed and everything in red
+- New switch **Night mode** in Home Assistant (e.g. for an automation) and **Preview night** in the settings
+
 ## 3.4
 
 - **Update screen:** the panel now only shows UPDATE while uploading over Wi-Fi (no progress bar – it stood still at 0 %)
@@ -44,6 +49,11 @@
 ---
 
 ## Deutsch
+
+### 3.5 – Nachtmodus
+
+- **Nachtmodus:** Die Ruhezeit kann jetzt auch „Nacht“ sein – gedimmt und alles in Rot
+- Neuer Schalter **Nachtmodus** in Home Assistant (z. B. für eine Automation) und **Nacht ansehen** in den Einstellungen
 
 ### 3.4
 

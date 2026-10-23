@@ -125,7 +125,7 @@ brightness, panel on/off. The bar then says **“Apply live”**. New pages, oth
 kinds of conditions need **“Apply & upload to panel”** (a new upload).
 
 In Home Assistant the panel also gets: switch **Display**, slider **Brightness**, button **Next page**,
-switch **Quiet hours** and the live values under *Configuration* (e.g. “Clock duration”). The names follow the
+switch **Quiet hours**, switch **Night mode** and the live values under *Configuration* (e.g. “Clock duration”). The names follow the
 **language on the panel** – with German panel texts they are German (“Anzeige”, “Helligkeit” …).
 
 ## Language & appearance

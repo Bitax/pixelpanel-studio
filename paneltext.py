@@ -7,7 +7,7 @@ PANEL_TEXT = {
         "months": None,  # Datum als 11.10.
         "done": "FERTIG", "end": "ENDE", "pause": "PAUSE",
         "dec": ",", "thou": ".",  # 1.234,5
-        "ha": {"display": "Anzeige", "quiet": "Ruhezeit", "bright": "Helligkeit", "psu": "Netzteil Strom", "next": "Nächste Seite",
+        "ha": {"display": "Anzeige", "quiet": "Ruhezeit", "night": "Nachtmodus", "bright": "Helligkeit", "psu": "Netzteil Strom", "next": "Nächste Seite",
                "show": "{} anzeigen", "dur": "{} Dauer", "thr": "{} Schwelle", "page": "Seite {}"},
         "today": "HEUTE", "tomorrow": "MORGEN", "now": "JETZT", "noevents": "KEINE TERMINE", "until": "BIS", "nodata": "KEINE DATEN",
         "words": {
@@ -29,7 +29,7 @@ PANEL_TEXT = {
         "months": ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"],  # Datum als 11 OCT
         "done": "DONE", "end": "END", "pause": "PAUSE",
         "dec": ".", "thou": ",",  # 1,234.5
-        "ha": {"display": "Display", "quiet": "Quiet hours", "bright": "Brightness", "psu": "Power supply current", "next": "Next page",
+        "ha": {"display": "Display", "quiet": "Quiet hours", "night": "Night mode", "bright": "Brightness", "psu": "Power supply current", "next": "Next page",
                "show": "{} visible", "dur": "{} duration", "thr": "{} threshold", "page": "Page {}"},
         "today": "TODAY", "tomorrow": "TMRW", "now": "NOW", "noevents": "NO EVENTS", "until": "TO", "nodata": "NO DATA",
         "words": {

@@ -811,3 +811,7 @@ ol.howto code { font-family: var(--mono); font-size: 12px; background: var(--fil
 .rel-notes b { display: block; margin: 6px 0 2px; }
 .rel-notes b:first-child { margin-top: 0; }
 .rel-notes ul { margin: 2px 0 6px; padding-left: 20px; }
+
+/* 3.5: Nachtmodus */
+.qb-night { background: #b3261e; }
+.quiet-tag.night { color: #ff6b5e; }

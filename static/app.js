@@ -123,7 +123,7 @@ function frame(items, trans, now) {
   const g = geom();
   const pagesById = Object.fromEntries(S.draft.pages.map((p) => [p.id, p]));
   const { buf, acc, info, scrolled, long } = S.R.renderFrame(g.W, g.H, items, { now: now || new Date(), states: states(), geom: g, pagesById, timers: timerView(), lang: S.draft.settings.panel_lang, time12: S.draft.settings.time_format === "12",
-    ms: now ? now.getTime() : Date.now(), history: histFor(items, trans) }, trans);
+    ms: now ? now.getTime() : Date.now(), history: histFor(items, trans), night: !now && !!S.quiet && S.quiet.mode === 3 }, trans);
   const pw = power();
   const cap = S.R.geo.brightnessCap(acc, pw.i_px, pw.amp, pw.idle);
   const user = S.draft.settings.brightness;
@@ -252,13 +252,13 @@ function renderPanels() {
       const t = ($("#rot-info") && $("#rot-info").textContent) || ($("#main .view-head h2") || {}).textContent || "";
       if (p.miniCap.textContent !== t) p.miniCap.textContent = t;
     }
-    const metaKey = p.meta && [f.amps.toFixed(1), f.limited, f.eff, Q && Q.mode, Q && Math.ceil(Q.left / 60), _geomKey].join("|");
+    const metaKey = p.meta && [f.amps.toFixed(1), f.limited, f.eff, Q && Q.mode, Q && Q.force, Q && Math.ceil(Q.left / 60), _geomKey].join("|");
     if (p.meta && metaKey !== p.metaKey) {
       p.metaKey = metaKey;
       const g = geom();
       p.meta.replaceChildren(`${g.W} × ${g.H} · P${String(g.pitch).replace(".", ",")} · ≈ ${fmtA(f.amps)}`,
         f.limited && S.draft.active ? el("span", { class: "limit", title: "Das Netzteil-Limit dimmt dieses Bild automatisch" }, ` · ⚡ ${Math.round(f.eff / 2.55)} %`) : "",
-        Q ? el("span", { class: "quiet-tag" }, ` · ${Q.mode === 1 ? "Ruhezeit" : Q.mode === 2 ? "Ruhezeit (gedimmt)" : "Abenddimmung"} noch ${fmtLeft(Q.left)}`) : "");
+        Q ? el("span", { class: "quiet-tag" + (Q.mode === 3 ? " night" : "") }, Q.force ? " · Nachtansicht" : ` · ${Q.mode === 1 ? "Ruhezeit" : Q.mode === 2 ? "Ruhezeit (gedimmt)" : Q.mode === 3 ? "Nachtmodus" : "Abenddimmung"} noch ${fmtLeft(Q.left)}`) : "");
     }
   }
   // Laufschrift sichtbar → weiterzeichnen (ca. 20 Bilder pro Sekunde)
@@ -578,9 +578,10 @@ function tickRotation(advance = true) {
   let ok = pages.map((p) => pageOk(p, now));
   // Ruhezeit wie auf dem ESP (Vorschau)
   const qc = S.R.geo.quietCfg(S.draft.settings, pages);
-  S.quiet = Object.assign(S.R.geo.quietEval(qc, S.R.geo.weekSec(new Date(now))), { enabled: qc.enabled });
-  if (S.quiet.mode === 1) ok = ok.map(() => false);
-  if (S.quiet.mode === 2) ok = ok.map((v, i) => v && qc.dimOk[i]);
+  // „Nacht ansehen“: nur die Vorschau – wie der Schalter „Nachtmodus“, unabhängig von den Ruhezeit-Uhrzeiten
+  S.quiet = Object.assign(S.nightView ? S.R.geo.quietEval(Object.assign({}, qc, { enabled: false }), 0, true)
+    : S.R.geo.quietEval(qc, S.R.geo.weekSec(new Date(now)), false), { enabled: qc.enabled });
+  ok = S.R.geo.quietPages(ok, qc, S.quiet);
   ok = S.R.geo.timerFocus(ok, pages, S.timers, S.draft.settings, now);
   const areas = pages.map((p) => g.areaOf(p));
   const sticky = pages.map(() => false);
@@ -749,6 +750,10 @@ const EXPLAIN = {
   "Ruhezeit": "Zeiten, in denen das Panel aus ist oder nur ganz schwach leuchtet – zum Beispiel nachts im Schlafzimmer.",
   "Abenddimmung": "Vor der Ruhezeit wird das Panel nach und nach dunkler, damit es abends nicht blendet.",
   "Helligkeit gedimmt": "Wie hell das Panel in der Ruhezeit im Modus „Gedimmt“ noch leuchtet. 5 % reicht nachts meist, um die Uhrzeit zu lesen.",
+  "Helligkeit gedimmt & Nacht": "Wie hell das Panel in der Ruhezeit mit „Gedimmt“ oder „Nacht“ noch leuchtet. 3–5 % reicht nachts meist, um die Uhrzeit zu lesen. Ganz unten (1 %) können feine Linien verschwinden.",
+  "Nachtmodus": "Nachts blendet rotes Licht viel weniger als weißes oder blaues. Im Nachtmodus wird das Panel gedimmt und zeigt alles in Rot – Uhr, Wetter, Icons. Er kommt entweder zu den Zeiten der Ruhezeit („Nacht“) oder über den Schalter „Nachtmodus“ in Home Assistant.",
+  "Nacht ansehen": "Schaltet nur die Vorschau hier in den Nachtmodus, damit du siehst, wie das Panel nachts aussieht. Am Panel ändert sich dadurch nichts.",
+  "Helligkeit im Nachtmodus": "Wie hell das Panel leuchtet, wenn du den Nachtmodus in Home Assistant einschaltest.",
   "Helligkeit abends": "Auf wie viel Prozent das Panel bis zum Beginn der Ruhezeit herunterdimmt.",
   "Sanft abdunkeln": "An: Das Panel wird gleichmäßig über die eingestellte Zeit dunkler. Aus: Es springt zur Startzeit direkt auf die Abend-Helligkeit.",
   "Aktive Seiten": "Welche Seiten während der gedimmten Ruhezeit zu sehen sind. Nachts reicht oft die Uhr – alles andere pausiert bis zum Morgen.",
@@ -2038,7 +2043,7 @@ function quietSummary() {
   if (!on.length) return "An, aber kein Tag ausgewählt";
   const same = on.every((d) => d.from === on[0].from && d.to === on[0].to && d.mode === on[0].mode);
   const st = S.quiet && S.quiet.enabled && S.quiet.mode ? " · gerade aktiv" : S.quiet && S.quiet.evening ? " · Abenddimmung aktiv" : "";
-  return (same ? `${fmtClock(on[0].from)} – ${fmtClock(on[0].to)} · ${on[0].mode === "dim" ? "gedimmt" : "aus"}${on.length < 7 ? ` · ${on.length} Nächte` : ""}`
+  return (same ? `${fmtClock(on[0].from)} – ${fmtClock(on[0].to)} · ${on[0].mode === "dim" ? "gedimmt" : on[0].mode === "night" ? "Nacht (rot)" : "aus"}${on.length < 7 ? ` · ${on.length} Nächte` : ""}`
     : `${on.length} Nächte · unterschiedliche Zeiten`) + st;
 }
 // 24-Stunden-Balken von 12 Uhr mittags bis 12 Uhr am nächsten Tag
@@ -2057,7 +2062,7 @@ function quietBar(d) {
   if (day.on && len > 0) {
     const ev = q.evening || {};
     if (q.enabled && ev.enabled) { const l = (ev.lead || 60) * 60; parts.push(...seg((rel - l + 86400) % 86400, (rel - l + 86400) % 86400 + l, "qb-eve")); }
-    parts.push(...seg(rel, rel + len, day.mode === "dim" ? "qb-dim" : "qb-off"));
+    parts.push(...seg(rel, rel + len, day.mode === "dim" ? "qb-dim" : day.mode === "night" ? "qb-night" : "qb-off"));
   }
   return el("div", { class: "qbar" }, parts, el("span", { class: "qb-ticks" }, ["12", "18", "0", "6", "12"].map((t) =>
     el("small", {}, is12() ? { "12": "12 PM", "18": "6 PM", "0": "12 AM", "6": "6 AM" }[t] : `${t} h`))));
@@ -2066,7 +2071,7 @@ function quietGroups() {
   const s = "settings.quiet";
   const q = S.draft.settings.quiet;
   const on = q.enabled;
-  const anyDim = on && q.days.some((d) => d.on && d.mode === "dim");
+  const anyDim = on && q.days.some((d) => d.on && (d.mode === "dim" || d.mode === "night"));
   const rr = () => { updateSavebar(); render(); };
   const dayRows = q.days.map((d, i) => el("div", { class: "qrow" + (d.on ? "" : " off") },
     el("div", { class: "qhead" },
@@ -2074,7 +2079,7 @@ function quietGroups() {
         el("b", {}, `${DAY_NAMES[i]} → ${DAY_NAMES[(i + 1) % 7]}`)),
       el("span", { class: "qtimes" }, timePick(`${s}.days.${i}.from`, { disabled: !on || !d.on, onchange: render }), el("span", { class: "qto" }, "bis"),
         timePick(`${s}.days.${i}.to`, { disabled: !on || !d.on, onchange: render })),
-      el("div", { class: "seg qmode" }, [["off", "Aus"], ["dim", "Gedimmt"]].map(([v, l]) =>
+      el("div", { class: "seg qmode" }, [["off", "Aus"], ["dim", "Gedimmt"], ["night", "Nacht"]].map(([v, l]) =>
         el("button", { class: d.mode === v ? "on" : "", disabled: !on || !d.on, onclick: () => { setPath(S.draft, `${s}.days.${i}.mode`, v); rr(); } }, l)))),
     quietBar(i)));
   const pageChips = S.draft.pages.map((p) => {
@@ -2099,14 +2104,20 @@ function quietGroups() {
       on && el("div", { class: "row qtable" }, dayRows,
         el("div", { class: "qtools" },
           el("button", { class: "btn small", onclick: () => { const f = q.days[0]; q.days.forEach((d, i) => { if (i) Object.assign(d, { on: f.on, from: f.from, to: f.to, mode: f.mode }); }); rr(); } }, "Montag für alle übernehmen"),
-          el("span", { class: "qlegend" }, el("i", { class: "qb-norm" }), "normal", el("i", { class: "qb-off" }), "aus", el("i", { class: "qb-dim" }), "gedimmt", ev.enabled ? [el("i", { class: "qb-eve" }), "Abenddimmung"] : ""))),
-      on && row("Helligkeit gedimmt", pctCtl(`${s}.dim_pct`, 1, 50, !anyDim), anyDim ? "So hell ist das Panel in Nächten mit „Gedimmt“" : "Nur für Nächte mit „Gedimmt“"),
+          el("span", { class: "qlegend" }, el("i", { class: "qb-norm" }), "normal", el("i", { class: "qb-off" }), "aus", el("i", { class: "qb-dim" }), "gedimmt", el("i", { class: "qb-night" }), "Nacht (rot)", ev.enabled ? [el("i", { class: "qb-eve" }), "Abenddimmung"] : ""))),
+      on && row("Helligkeit gedimmt & Nacht", pctCtl(`${s}.dim_pct`, 1, 50, !anyDim), anyDim ? "So hell ist das Panel in Nächten mit „Gedimmt“ oder „Nacht“ – nachts reichen oft 3–5 %" : "Nur für Nächte mit „Gedimmt“ oder „Nacht“"),
       on && el("div", { class: "row qpages" + (anyDim ? "" : " disabled") },
-        el("div", { class: "label" }, "Sichtbar, wenn gedimmt", el("small", {}, anyDim
+        el("div", { class: "label" }, "Sichtbar, wenn gedimmt oder Nacht", el("small", {}, anyDim
           ? ((q.dim_pages || []).length ? "Nur diese Seiten laufen in der Ruhezeit weiter" : "Keine Seite gewählt – das Panel bleibt dann dunkel")
-          : "Nur wenn mindestens eine Nacht auf „Gedimmt“ steht")),
+          : "Nur wenn mindestens eine Nacht auf „Gedimmt“ oder „Nacht“ steht")),
         el("div", { class: "qchips" }, pageChips)),
-    ], on ? "Die Zeile „Mo → Di“ ist die Nacht von Montag auf Dienstag. Ein Beginn vor 12 Uhr zählt schon als nach Mitternacht (z. B. 00:30). In Home Assistant gibt es zusätzlich den Schalter „Ruhezeit“ – z. B. für eine Party." : ""),
+    ], on ? "Die Zeile „Mo → Di“ ist die Nacht von Montag auf Dienstag. Ein Beginn vor 12 Uhr zählt schon als nach Mitternacht (z. B. 00:30). „Nacht“ = gedimmt und alles in Rot. In Home Assistant gibt es zusätzlich den Schalter „Ruhezeit“ – z. B. für eine Party." : ""),
+    group("Nachtmodus", [
+      row("Nacht ansehen", el("label", { class: "switch" }, el("input", { type: "checkbox", checked: !!S.nightView,
+        onchange: (e) => { S.nightView = e.target.checked; tickRotation(false); render(); } }), el("span")),
+        S.nightView ? "Die Vorschau zeigt jetzt, wie das Panel nachts aussieht – nur hier, das Panel selbst ändert sich nicht" : "Zeigt in der Vorschau, wie das Panel im Nachtmodus aussieht: gedimmt und alles in Rot"),
+      !on && row("Helligkeit im Nachtmodus", pctCtl(`${s}.dim_pct`, 1, 50, false), "So hell ist das Panel, wenn du den Nachtmodus in Home Assistant einschaltest"),
+    ], "In Home Assistant hat das Panel den Schalter „Nachtmodus“: rot und gedimmt, unabhängig von den Uhrzeiten – z. B. per Automation, wenn im Schlafzimmer das Licht ausgeht. Die Seiten laufen dabei weiter wie gewohnt."),
     group("Abenddimmung", [
       row("Abenddimmung", el("label", { class: "switch" }, el("input", { type: "checkbox", checked: ev.enabled, disabled: !on,
         onchange: (e) => { setPath(S.draft, `${s}.evening.enabled`, e.target.checked); rr(); } }), el("span")),

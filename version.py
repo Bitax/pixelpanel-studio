@@ -1,5 +1,5 @@
 """Version von PixelPanel Studio – wird auch in die Firmware geschrieben („Studio Version“ in HA)."""
-VERSION = "3.4"
+VERSION = "3.5"
 
 # GitHub-Repo für Feedback, Icon-Vorschläge und den Community-Icon-Store, z. B. "bitax/pixelpanel-studio".
 # Leer = diese Funktionen sind im Studio sichtbar, aber noch ausgegraut.

@@ -130,7 +130,7 @@ Neue Seiten, andere Entitäten, Farben, Layout oder neue Bedingungsarten brauche
 **„Übernehmen & aufs Panel“** (neues Übertragen).
 
 In Home Assistant bekommt das Panel zusätzlich: Schalter **Anzeige**, Regler **Helligkeit**,
-Taste **Nächste Seite**, Schalter **Ruhezeit** und die Live-Werte unter *Konfiguration* (z. B. „Uhr Dauer“).
+Taste **Nächste Seite**, Schalter **Ruhezeit**, Schalter **Nachtmodus** und die Live-Werte unter *Konfiguration* (z. B. „Uhr Dauer“).
 Die Namen richten sich nach der **Sprache auf dem Panel** – mit englischen Panel-Texten heißen sie „Display“, „Brightness“ usw.
 
 ## Sprache & Aussehen

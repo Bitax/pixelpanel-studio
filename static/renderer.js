@@ -350,7 +350,7 @@
         const len = (((end - start) % 86400) + 86400) % 86400;
         const on = dd.on !== false && len > 0;
         const base = d * 86400 + start + (start < 12 * 3600 ? 86400 : 0);
-        win.push({ start: base % 604800, len: on ? len : 0, mode: dd.mode === "dim" ? 2 : 1 });
+        win.push({ start: base % 604800, len: on ? len : 0, mode: dd.mode === "dim" ? 2 : dd.mode === "night" ? 3 : 1 });
       }
       const pct = (v, dflt) => Math.max(1, Math.min(100, Math.trunc(typeof v === "number" ? v : dflt)));
       const ev = q.evening || {};
@@ -366,16 +366,23 @@
         dimOk: (pages || []).map((p) => allowed.has(p.id)),
       };
     }
-    // W = Sekunde der Woche (Mo 0:00 = 0) → { mode: 0 normal / 1 aus / 2 gedimmt, cap: 0..255, left: Sekunden bis Ende }
-    function quietEval(q, W) {
+    // W = Sekunde der Woche (Mo 0:00 = 0) → { mode: 0 normal / 1 aus / 2 gedimmt / 3 Nacht (gedimmt + rot), cap: 0..255,
+    // left: Sekunden bis Ende, force: Nacht kommt vom Schalter „Nachtmodus“ (dann bleiben alle Seiten) }
+    // nightOn = Schalter „Nachtmodus“ (bzw. „Nacht ansehen“ in der Vorschau) – wie in rot_cpp / yaml_gen.py
+    function quietEval(q, W, nightOn) {
+      const r = quietWin(q, W);
+      if (r.mode === 0 && nightOn && q) { r.mode = 3; r.force = true; if (q.dimCap < r.cap) r.cap = q.dimCap; r.evening = false; }
+      return r;
+    }
+    function quietWin(q, W) {
       const WEEK = 604800;
       let mode = 0, cap = 255, left = 0, evening = false;
-      if (!q || !q.enabled) return { mode, cap, left, evening };
+      if (!q || !q.enabled) return { mode, cap, left, evening, force: false };
       for (let d = 0; d < 7; d++) {
         const w = q.win[d];
         if (w.len <= 0) continue;
         const dd = (((W - w.start) % WEEK) + WEEK) % WEEK;
-        if (dd < w.len) { mode = w.mode; cap = w.mode === 2 ? q.dimCap : 0; left = w.len - dd; }
+        if (dd < w.len) { mode = w.mode; cap = w.mode >= 2 ? q.dimCap : 0; left = w.len - dd; }
       }
       if (mode === 0 && q.evLead > 0) {
         for (let d = 0; d < 7; d++) {
@@ -389,7 +396,13 @@
           }
         }
       }
-      return { mode, cap, left, evening };
+      return { mode, cap, left, evening, force: false };
+    }
+    // Seiten in der Ruhezeit: aus = keine, gedimmt/Nacht = nur die gewählten (Nacht per Schalter: alle)
+    function quietPages(ok, q, e) {
+      if (e.mode === 1) return ok.map(() => false);
+      if (e.mode === 2 || (e.mode === 3 && !e.force)) return ok.map((v, i) => v && !!q.dimOk[i]);
+      return ok;
     }
     // Timer im Vordergrund (wie focus_cpp in yaml_gen.py): ok[] auf genau einen laufenden „exklusiven“ Timer begrenzen
     function timerFocus(ok, pages, timers, settings, nowMs) {
@@ -409,7 +422,7 @@
     }
     const weekSec = (t) => ((t.getDay() + 6) % 7) * 86400 + t.getHours() * 3600 + t.getMinutes() * 60 + t.getSeconds();
 
-    return { Geom, powerCfg, brightnessCap, needAmps, chainInfo, allowed, rotate, condTrue, BU, timerStep, timerVisible, isoEpoch, hms, hwPlan, quietCfg, quietEval, weekSec, timerFocus };
+    return { Geom, powerCfg, brightnessCap, needAmps, chainInfo, allowed, rotate, condTrue, BU, timerStep, timerVisible, isoEpoch, hms, hwPlan, quietCfg, quietEval, quietPages, weekSec, timerFocus };
   }
 
   // ================================================================ Renderer
@@ -465,6 +478,7 @@
         if (X + w > s.GX1) w = s.GX1 - X;
         if (Y + h > s.GY1) h = s.GY1 - Y;
         if (w <= 0 || h <= 0) return;
+        if (s.night) { const m = Math.max(c[0], c[1], c[2]); c = [m, 0, 0]; }
         if (s.AL < 255) c = [Math.trunc(c[0] * s.AL / 255), Math.trunc(c[1] * s.AL / 255), Math.trunc(c[2] * s.AL / 255)];
         for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
           const XX = X + i, YY = Y + j;
@@ -1275,6 +1289,7 @@
       renderFrame(W, H, items, ctx, trans) {
         T = PT[ctx && ctx.lang === "en" ? "en" : "de"] || PT.de;
         const s = Surface(W, H);
+        s.night = !!(ctx && ctx.night);  // Nachtmodus: alles rot (wie NIGHT in yaml_gen.py)
         s.ms = ctx && ctx.ms != null ? ctx.ms : Date.now();
         s.long = false;
         let info = null;

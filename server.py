@@ -195,7 +195,7 @@ def migrate(cfg):
         norm_days.append({"on": bool(dd.get("on", True)),
                           "from": str(dd.get("from") or ("00:30" if weekend_eve else "23:00")),
                           "to": str(dd.get("to") or ("09:00" if weekend_eve else "06:30")),
-                          "mode": "dim" if dd.get("mode") == "dim" else "off"})
+                          "mode": dd.get("mode") if dd.get("mode") in ("dim", "night") else "off"})
     ev = q.get("evening") if isinstance(q.get("evening"), dict) else {}
     ids = [p.get("id") for p in cfg.get("pages", [])]
     dim_pages = q.get("dim_pages")

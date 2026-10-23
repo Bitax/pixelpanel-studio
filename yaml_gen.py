@@ -121,6 +121,8 @@ int OVF = 0; uint32_t SMS = 35; bool STK = false;
 // Animationen: TX/TY verschieben alles, GX/GY = sichtbarer Bildschirmausschnitt, AL = Helligkeit 0..255
 int TX = 0, TY = 0, GX0 = 0, GY0 = 0, GX1 = 4096, GY1 = 4096, AL = 255;
 uint32_t ACC = 0;
+// Nachtmodus: jede Farbe wird zu Rot in derselben Helligkeit (hellster Farbanteil)
+const bool NIGHT = id(q_night);
 Color ICOL = Color(10, 132, 255);  // frei wählbare Icon-Farbe (Palette "C")
 auto FR = [&](int x, int y, int w, int h, Color c) {
 if (x < 0) { w += x; x = 0; }
@@ -134,6 +136,7 @@ if (Y < GY0) { h -= GY0 - Y; Y = GY0; }
 if (X + w > GX1) w = GX1 - X;
 if (Y + h > GY1) h = GY1 - Y;
 if (w <= 0 || h <= 0) return;
+if (NIGHT) c = Color(std::max(c.r, std::max(c.g, c.b)), 0, 0);
 if (AL < 255) c = Color(c.r * AL / 255, c.g * AL / 255, c.b * AL / 255);
 it.filled_rectangle(X, Y, w, h, c);
 ACC += (uint32_t) (c.r + c.g + c.b) * w * h;
@@ -1625,7 +1628,7 @@ def quiet_cfg(s, pages=None):
         on = bool(dd.get("on", True)) and length > 0
         # Zeile d = Nacht von Tag d auf Tag d+1: Beginn vor 12 Uhr liegt schon nach Mitternacht
         base = d * 86400 + start + (86400 if start < 12 * 3600 else 0)
-        win.append({"start": base % 604800, "len": length if on else 0, "mode": 2 if dd.get("mode") == "dim" else 1})
+        win.append({"start": base % 604800, "len": length if on else 0, "mode": {"dim": 2, "night": 3}.get(dd.get("mode"), 1)})
     pct = lambda v, dflt: max(1, min(100, int(v if isinstance(v, (int, float)) else dflt)))
     ev = q.get("evening") or {}
     lead = max(0, min(6 * 60, int(ev.get("lead", 60) or 0))) * 60
@@ -1642,7 +1645,7 @@ def quiet_cfg(s, pages=None):
 
 
 def quiet_eval_cpp(q):
-    """C++: setzt qmode (0 normal, 1 aus, 2 gedimmt) und qcap (Helligkeitsgrenze 0..255). Erwartet W (Sekunde der Woche)."""
+    """C++: setzt qmode (0 normal, 1 aus, 2 gedimmt, 3 Nacht = gedimmt + rot) und qcap (Helligkeitsgrenze 0..255). Erwartet W (Sekunde der Woche)."""
     return f"""static const int32_t QS[7] = {{{", ".join(str(w["start"]) for w in q["win"])}}};
 static const int32_t QL[7] = {{{", ".join(str(w["len"]) for w in q["win"])}}};
 static const uint8_t QM[7] = {{{", ".join(str(w["mode"]) for w in q["win"])}}};
@@ -1650,7 +1653,7 @@ const int32_t WEEK = 604800, EV_LEAD = {q["ev_lead"]}, EV_CAP = {q["ev_cap"]}, D
 for (int d = 0; d < 7; d++) {{
 if (QL[d] <= 0) continue;
 int32_t dd = ((W - QS[d]) % WEEK + WEEK) % WEEK;
-if (dd < QL[d]) {{ qmode = QM[d]; qcap = QM[d] == 2 ? DIM_CAP : 0; }}
+if (dd < QL[d]) {{ qmode = QM[d]; qcap = QM[d] >= 2 ? DIM_CAP : 0; }}
 }}
 if (qmode == 0 && EV_LEAD > 0) {{
 for (int d = 0; d < 7; d++) {{
@@ -2040,6 +2043,12 @@ time:
     optimistic: true
     restore_mode: RESTORE_DEFAULT_ON
     icon: mdi:sleep""")
+    sw.append(f"""  - platform: template
+    name: {yq(HN["night"])}
+    id: night_on
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+    icon: mdi:weather-night""")
     num = [f"""  - platform: template
     name: {yq(HN["bright"])}
     id: bright
@@ -2119,6 +2128,9 @@ globals:
   - id: ota_st
     type: int
     initial_value: '0'
+  - id: q_night
+    type: bool
+    initial_value: 'false'
 """ + "".join(f"""  - id: {t}_rem
     type: int
     initial_value: '-1'
@@ -2177,20 +2189,25 @@ for (int i = 0; i < N; i++) ok[i] = (i == FX[pick]);
 }}
 }}
 """
-    quiet_cpp = ""
+    quiet_win = ""
     if q["enabled"]:
-        quiet_cpp = f"""// Ruhezeit / Abenddimmung (läuft im ESP – auch ohne Home Assistant)
-int qmode = 0, qcap = 255;
-if (id(quiet_on).state) {{
+        quiet_win = f"""if (id(quiet_on).state) {{
 auto qt = id(ha_time).now();
 if (qt.is_valid()) {{
 int32_t W = ((qt.day_of_week + 5) % 7) * 86400 + qt.hour * 3600 + qt.minute * 60 + qt.second;
 {quiet_eval_cpp(q)}}}
 }}
-static const bool DIMOK[] = {{{", ".join("true" if v else "false" for v in q["dim_ok"])}}};
+"""
+    quiet_cpp = f"""// Ruhezeit / Abenddimmung / Nachtmodus (läuft im ESP – auch ohne Home Assistant)
+int qmode = 0, qcap = 255;
+{quiet_win}// Schalter „Nachtmodus“ (Home Assistant): rot + gedimmt, die Seiten bleiben wie sie sind
+bool qforce = false;
+if (qmode == 0 && id(night_on).state) {{ qmode = 3; qforce = true; if ({q["dim_cap"]} < qcap) qcap = {q["dim_cap"]}; }}
+static const bool DIMOK[] = {{{", ".join("true" if v else "false" for v in q["dim_ok"]) or "false"}}};
 if (qmode == 1) for (int i = 0; i < N; i++) ok[i] = false;
-if (qmode == 2) for (int i = 0; i < N; i++) ok[i] = ok[i] && DIMOK[i];
+if (qmode == 2 || (qmode == 3 && !qforce)) for (int i = 0; i < N; i++) ok[i] = ok[i] && DIMOK[i];
 id(q_cap) = qcap;
+id(q_night) = qmode == 3;
 """
     rot = IS_NUM_CPP + f"""
 const int N = {n};

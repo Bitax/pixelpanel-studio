@@ -2,6 +2,14 @@
 
 All notable changes to PixelPanel Studio. *Deutsch weiter unten.*
 
+## 3.5 – night mode
+
+### New
+- **Night mode:** quiet hours now have a third choice per night besides “Off” and “Dimmed”: **Night** – the panel is dimmed and shows everything in **red** (clock, weather, icons), which dazzles much less at night. Every colour becomes red of the same brightness, so everything stays readable
+- **Switch “Night mode” in Home Assistant:** red and dimmed regardless of the times – e.g. by automation when the bedroom light goes off. The pages keep running as usual
+- **Preview night** (Settings → General → Night mode): shows in the preview how the panel looks at night
+- Brightness for “Dimmed” and “Night” is shared; 5 % by default
+
 ## 3.4 – simpler update screen
 
 ### Changed
@@ -67,6 +75,13 @@ Internal test versions (not published).
 ---
 
 ## Deutsch
+
+### 3.5 – Nachtmodus
+
+- **Neu: Nachtmodus** – bei der Ruhezeit gibt es pro Nacht neben „Aus“ und „Gedimmt“ jetzt **„Nacht“**: Das Panel ist gedimmt und zeigt alles in **Rot** (Uhr, Wetter, Icons) – blendet nachts viel weniger. Jede Farbe wird zu Rot in derselben Helligkeit, alles bleibt lesbar
+- **Neu: Schalter „Nachtmodus“ in Home Assistant** – rot und gedimmt, unabhängig von den Uhrzeiten, z. B. per Automation, wenn im Schlafzimmer das Licht ausgeht. Die Seiten laufen dabei weiter wie gewohnt
+- **Neu: Nacht ansehen** (Einstellungen → Allgemein → Nachtmodus) – zeigt in der Vorschau, wie das Panel nachts aussieht
+- „Gedimmt“ und „Nacht“ teilen sich die Helligkeit, Standard 5 %
 
 ### 3.4 – einfacherer Update-Bildschirm
 

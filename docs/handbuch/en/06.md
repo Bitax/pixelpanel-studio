@@ -13,12 +13,25 @@ The panel doesn't need to shine at night. For **each night** separately:
 | **Quiet hours** (switch) | turns quiet hours on/off as a whole |
 | **Mo → Tu …** | the night from Monday to Tuesday etc., each with its own tick |
 | **From / to** | e.g. 23:00 to 06:30. A start before noon counts as after midnight (e.g. 00:30) |
-| **Off / Dimmed** | completely off or only faintly lit |
+| **Off / Dimmed / Night** | completely off, only faintly lit or **Night**: faintly lit and everything in red (see below) |
 | **Apply Monday to all** | copies Monday's times to every night |
-| **Dimmed brightness** | how bright the panel is on “Dimmed” nights (percent) |
-| **Visible when dimmed** | which pages keep running during dimmed quiet hours – the clock is often enough at night |
+| **Dimmed & night brightness** | how bright the panel is on “Dimmed” or “Night” nights (percent) – 3–5 % is often enough at night |
+| **Visible when dimmed or at night** | which pages keep running on these nights – the clock is often enough at night |
 
-The bar under each night shows noon to noon: normal, evening dimming, off/dimmed.
+The bar under each night shows noon to noon: normal, evening dimming, off, dimmed or night (red).
+
+## Night mode
+
+At night red light dazzles much less than white or blue. In **night mode** the panel is dimmed and shows **everything in red** – clock, weather, icons. Every colour becomes red of the same brightness, so everything stays easy to read.
+
+There are two ways:
+
+- **At set times:** choose **“Night”** for a night in the quiet hours. *Dimmed & night brightness* and *Visible when dimmed or at night* apply.
+- **By switch:** in Home Assistant the panel has the switch **“Night mode”** – regardless of the times, e.g. by automation when the bedroom light goes off. All pages keep running as usual, just dimmed and in red. If the quiet hours are set to “Off” right now, the panel still stays dark.
+
+**Preview night** (*Settings → General → Night mode*) shows in the preview how the panel looks at night – nothing changes on the panel itself.
+
+> **Tip.** At the very bottom (1 %) thin lines may disappear on the panel. Try what is still easy to read for you.
 
 ## Evening dimming
 
