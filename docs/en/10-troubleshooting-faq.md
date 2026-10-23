@@ -24,7 +24,7 @@ Otherwise run in the Studio folder: `.venv\Scripts\pip install esphome` (Windows
 **The first flash fails.** A new ESP32 needs a USB **data** cable once. On Windows check in Device Manager under *Ports*
 which COM port appears; install the USB driver (CP210x or CH340) if needed. Some boards need the **BOOT** button pressed while connecting.
 
-**Wi-Fi update stops (e.g. at 10 %).** Just upload again – during the update the panel only redraws once per second so the ESP32 has room to breathe. If that doesn't help: switch off **Display** in Home Assistant first and check the Wi-Fi signal at the panel. As a last resort upload by USB – but do **not** power the panel through the ESP32 and the USB cable: unplug the power supply, remove the wire from the 5V/VIN pin of the ESP32 (GND stays connected), plug the power supply back in and only then connect the USB cable. That way the panel runs only on its own power supply. After the update, reverse the steps.
+**Wi-Fi update stops (e.g. at 10 %).** Just upload again – during the update the panel only shows **UPDATE** and draws nothing else, so the ESP32 has room to breathe. If that doesn't help: switch off **Display** in Home Assistant first and check the Wi-Fi signal at the panel. As a last resort upload by USB – but do **not** power the panel through the ESP32 and the USB cable: unplug the power supply, remove the wire from the 5V/VIN pin of the ESP32 (GND stays connected), plug the power supply back in and only then connect the USB cable. That way the panel runs only on its own power supply. After the update, reverse the steps.
 
 **Wi-Fi upload can't find the panel.** Enter the panel's IP address under *Upload → Device*
 (see your router or the device in Home Assistant).

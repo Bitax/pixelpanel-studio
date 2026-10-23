@@ -625,43 +625,27 @@ py = yy;
 PRELUDE = PRELUDE.replace("@ACTIVE@", ", ".join(cstr(w) for w in ACTIVE_STATES))
 
 
-def ota_screen_cpp(W, H, done):
-    """3.3: Ruhiger Bildschirm, solange ein Update per WLAN läuft – „UPDATE“, Balken, Prozent.
-    Die Anzeige wird dabei nur einmal pro Sekunde neu gezeichnet (siehe ota_yaml)."""
-    return f"""// Update läuft: nur „UPDATE“, Fortschrittsbalken und Prozent – entlastet den ESP beim Schreiben der Firmware
+def ota_screen_cpp(W, H):
+    """Ruhiger Bildschirm, solange ein Update per WLAN läuft: nur „UPDATE“ in der Mitte.
+    (3.4: ohne Balken – während ESPHome die Firmware empfängt, zeichnet der ESP32 nichts neu.)"""
+    return f"""// Update läuft: nur „UPDATE“ – wird beim Start einmal gezeichnet und bleibt bis zum Neustart stehen
 OX = 0; OY = 0; DW = {W}; DH = {H}; GX0 = 0; GY0 = 0; GX1 = {W}; GY1 = {H}; AL = 255;
 int q = (tw("UPDATE", 8) <= {W} - 4 && {H} >= 48) ? 8 : (tw("UPDATE", 4) <= {W} - 2 ? 4 : 3);
-int lh = TH(q), m = std::max(2, {W} / 16), bw = {W} - 2 * m, bh = q >= 8 ? 7 : 5, sp = q >= 8 ? 5 : 3;
-int y = ({H} - (2 * lh + bh + 2 * sp)) / 2;
-tx({W} / 2, y, q, Color(0, 150, 255), 1, "UPDATE");
-y += lh + sp;
-int pc = std::max(0, std::min(100, id(ota_pct)));
-RC(m, y, bw, bh, Color(90, 90, 96));
-int fw = (bw - 2) * pc / 100;
-if (fw > 0) FR(m + 1, y + 1, fw, bh - 2, Color(48, 209, 88));
-y += bh + sp;
-char pb[16];
-if (id(ota_st) == 2) snprintf(pb, sizeof(pb), "%s", {cstr(done)}); else snprintf(pb, sizeof(pb), "%d%%", pc);
-tx({W} / 2, y, q, Color(200, 200, 200), 1, pb);"""
+tx({W} / 2, ({H} - TH(q)) / 2, q, Color(0, 150, 255), 1, "UPDATE");"""
 
 
 def ota_yaml(ota_pw, interval):
-    """OTA mit Update-Bildschirm: beim Start auf 1 Bild/s drosseln, bei Fehler zurück zum normalen Takt."""
+    """OTA mit Update-Bildschirm: beim Start „UPDATE“ zeigen und den Takt drosseln, bei Fehler zurück zum normalen Takt."""
     return f"""ota:
   - platform: esphome
 """ + (f"    password: {cstr(ota_pw)}\n" if ota_pw else "") + f"""    on_begin:
-      - lambda: 'id(ota_st) = 1; id(ota_pct) = 0;'
+      - lambda: 'id(ota_st) = 1;'
       - component.resume:
           id: matrix
           update_interval: 1s
       - component.update: matrix
-    on_progress:
-      - lambda: 'id(ota_pct) = (int) x;'
-    on_end:
-      - lambda: 'id(ota_st) = 2; id(ota_pct) = 100;'
-      - component.update: matrix
     on_error:
-      - lambda: 'id(ota_st) = 0; id(ota_pct) = 0;'
+      - lambda: 'id(ota_st) = 0;'
       - component.resume:
           id: matrix
           update_interval: {interval}ms
@@ -2135,9 +2119,6 @@ globals:
   - id: ota_st
     type: int
     initial_value: '0'
-  - id: ota_pct
-    type: int
-    initial_value: '0'
 """ + "".join(f"""  - id: {t}_rem
     type: int
     initial_value: '-1'
@@ -2291,7 +2272,7 @@ auto draw_mask = [&](uint32_t mask) {{
 {chr(10).join(draws)}
 }};
 if (id(ota_st) != 0) {{
-{ota_screen_cpp(g.W, g.H, PANEL_TEXT[cx.lang]["done"])}
+{ota_screen_cpp(g.W, g.H)}
 }} else {{
 {transition_cpp(an, g.W, g.H)}
 }}

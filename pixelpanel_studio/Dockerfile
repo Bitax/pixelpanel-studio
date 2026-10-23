@@ -1,6 +1,6 @@
 FROM ghcr.io/home-assistant/base:latest
 
-ARG PIXELPANEL_VERSION=3.3
+ARG PIXELPANEL_VERSION=3.4
 
 # Python + the small web-server dependencies (ESPHome itself is NOT installed:
 # firmware is compiled by the ESPHome app in Home Assistant)
@@ -26,6 +26,6 @@ ENTRYPOINT [ "/opt/venv/bin/python", "server.py", "--no-browser" ]
 CMD [ ]
 
 LABEL \
-  io.hass.version="3.3" \
+  io.hass.version="3.4" \
   io.hass.type="app" \
   io.hass.arch="aarch64|amd64"

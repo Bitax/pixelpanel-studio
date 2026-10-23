@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.4
+
+- **Update screen:** the panel now only shows UPDATE while uploading over Wi-Fi (no progress bar – it stood still at 0 %)
+
 ## 3.3
 
 - **Calendar:** all-day events are recognised on the panel again (no more “00:00” and cut-off titles)
@@ -40,6 +44,10 @@
 ---
 
 ## Deutsch
+
+### 3.4
+
+- **Update-Bildschirm:** Beim Übertragen per WLAN zeigt das Panel nur noch UPDATE (ohne Balken – der blieb bei 0 % stehen)
 
 ### 3.3
 

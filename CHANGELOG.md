@@ -2,6 +2,11 @@
 
 All notable changes to PixelPanel Studio. *Deutsch weiter unten.*
 
+## 3.4 – simpler update screen
+
+### Changed
+- **Update screen:** while uploading over Wi-Fi the panel now only shows **UPDATE** – no progress bar any more. While ESPHome receives the firmware the ESP32 doesn't redraw, so the bar stood still at 0 %
+
 ## 3.3 – calendar fix and update screen
 
 ### Fixed
@@ -62,6 +67,10 @@ Internal test versions (not published).
 ---
 
 ## Deutsch
+
+### 3.4 – einfacherer Update-Bildschirm
+
+- **Geändert: Update-Bildschirm** – beim Übertragen per WLAN zeigt das Panel jetzt nur noch **UPDATE**, ohne Fortschrittsbalken. Während ESPHome die Firmware empfängt, zeichnet der ESP32 nichts neu, deshalb blieb der Balken bei 0 % stehen
 
 ### 3.3 – Kalender-Korrektur und Update-Bildschirm
 
